@@ -18,8 +18,8 @@ class Node(object):
     def put(self, name, addr, tag=None):
         return self._put(self._label(name), addr, tag)
 
-    def remove(self, name, tag=None):
-        return self._remove(self._label(name), tag)
+    def remove(self, name, addr, tag=None):
+        return self._remove(self._label(name), addr, tag)
 
     def to_dict(self):
         r = {}
@@ -62,21 +62,21 @@ class Node(object):
 
         sub._put(label, addr, tag)
 
-    def _remove(self, label, tag=None):
+    def _remove(self, label, addr, tag=None):
         part = label.pop()
         sub = self._subs.get(part)
         if not label:
             if part == '*':
                 tagged = self._tagged_addr(self._addr, tag)
-                self._addr = [(a, t) for a, t in self._addr if a not in tagged]
+                self._addr = [(a, t) for a, t in self._addr if a not in addr]
                 self._wildcard = 0 if not self._addr else 1
                 return tagged
             elif sub:
                 tagged = self._tagged_addr(sub._addr, tag)
-                sub._addr = [(a, t) for a, t in sub._addr if a not in tagged]
+                sub._addr = [(a, t) for a, t in sub._addr if a not in addr]
                 return tagged
         elif sub:
-            sub._remove(label, tag)
+            sub._remove(label, addr, tag)
 
         if sub and sub._is_empty():
             del self._subs[part]
