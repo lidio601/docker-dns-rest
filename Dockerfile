@@ -1,5 +1,5 @@
 FROM alpine:3.1
-MAINTAINER "Patrick Hensley <spaceboy@indirect.com>"
+MAINTAINER "André Martins <aanm90@gmail.com>"
 COPY . /data
 RUN /data/bootstrap
 EXPOSE 80
