@@ -45,7 +45,10 @@ class Node(object):
             res = sub._get(label)
             if res:
                 return res
-        return self._addr if self._wildcard else None
+        self._addr_index += 1
+        if len(self._addr) != 0:
+            self._addr_index %= len(self._addr)
+        return self._addr[self._addr_index:] + self._addr[:self._addr_index] if self._wildcard else None
 
     def _put(self, label, addr, tag=None):
         part = label.pop()
