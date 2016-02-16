@@ -39,18 +39,21 @@ class DockerMonitor(object):
         # read the docker event stream and update the name table
         for raw in events:
             evt = json.loads(raw)
-            cid = evt['id']
-            status = evt['status']
-            if status in ('start', 'die'):
-                try:
-                    rec = self._inspect(cid)
-                    if rec:
-                        if status == 'start':
-                            self._registry.activate(rec)
-                        else:
-                            self._registry.deactivate(rec)
-                except Exception, e:
-                    print str(e)
+            if 'id' in evt:
+                cid = evt['id']
+                status = evt['status']
+                if status in ('start', 'die'):
+                    try:
+                        rec = self._inspect(cid)
+                        if rec:
+                            if status == 'start':
+                                self._registry.activate(rec)
+                            else:
+                                self._registry.deactivate(rec)
+                    except Exception, e:
+                        print str(e)
+            else:
+                print "Skipped event: " + str(evt)
 
     def _inspect(self, cid):
         # get full details on this container from docker
