@@ -5,7 +5,7 @@
 
 # monkey patch
 from gevent import monkey
-monkey.patch_all()
+monkey.patch_all(thread=False)
 
 # core
 import argparse
@@ -29,11 +29,11 @@ from gevent.wsgi import WSGIServer
 
 
 PROCESS = 'dnsrest'
-DOCKER_SOCK = 'unix:///docker.sock'
+DOCKER_SOCK = 'unix:///var/run/docker.sock'
 DOCKER_VERSION = '1.14'
-DNS_BINDADDR = '0.0.0.0:53'
+DNS_BINDADDR = '0.0.0.0:5053'
 DNS_RESOLVER = ['8.8.8.8']
-REST_BINDADDR = '0.0.0.0:80'
+REST_BINDADDR = '0.0.0.0:5080'
 EPILOG = '<tbd>'
 
 
