@@ -2,4 +2,4 @@ build
 .git
 .gitignore
 *.swp
-
+.idea
