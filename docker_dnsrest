@@ -5,6 +5,7 @@
 
 # monkey patch
 from gevent import monkey
+
 monkey.patch_all(thread=False)
 
 # core
@@ -27,21 +28,20 @@ import falcon
 import gevent
 from gevent.wsgi import WSGIServer
 
-
 # Default variables
 
 PROCESS = 'dnsrest'
 DOCKER_SOCK = 'unix:///var/run/docker.sock'
 DOCKER_VERSION = '1.14'
-DNS_BINDADDR = '0.0.0.0:53'
+DNS_BINDADDR = '0.0.0.0:%s' % os.getenv('DNS_PORT', "53")
 DNS_RESOLVER = ['8.8.8.8']
-REST_BINDADDR = '0.0.0.0:80'
+REST_BINDADDR = '0.0.0.0:%s' % os.getenv('API_PORT', "80")
 EPILOG = '<tbd>'
 
 
 def check(args):
     url = urlparse(args.docker)
-    if url.scheme in ('unix','unix+http'):
+    if url.scheme in ('unix', 'unix+http'):
         # check if the socket file exists
         if not os.path.exists(url.path):
             log.error('unix socket %r does not exist', url.path)
@@ -49,28 +49,28 @@ def check(args):
 
 
 def parse_args():
-    docker_url      = os.getenv('DOCKER_HOST', DOCKER_SOCK)
-    dns_bind_addr   = os.getenv('DNS_BIND_ADDR', DNS_BINDADDR)
-    dns_rest_addr   = os.getenv('DNS_REST_ADDR', REST_BINDADDR)
-    dns_no_resolv   = os.getenv('DNS_NO_RESOLV', False)
-    dns_resolver    = os.getenv('DNS_RESOLVER', DNS_RESOLVER)
+    docker_url = os.getenv('DOCKER_HOST', DOCKER_SOCK)
+    dns_bind_addr = os.getenv('DNS_BIND_ADDR', DNS_BINDADDR)
+    dns_rest_addr = os.getenv('DNS_REST_ADDR', REST_BINDADDR)
+    dns_no_resolv = os.getenv('DNS_NO_RESOLV', False)
+    dns_resolver = os.getenv('DNS_RESOLVER', DNS_RESOLVER)
 
     parser = argparse.ArgumentParser(PROCESS, epilog=EPILOG,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--docker', default=docker_url,
-        help='Url to docker TCP/UNIX socket')
+                        help='Url to docker TCP/UNIX socket')
     parser.add_argument('--dns-bind', default=dns_bind_addr,
-        help='Bind address for DNS server')
+                        help='Bind address for DNS server')
     parser.add_argument('--rest-bind', default=dns_rest_addr,
-        help='Bind address for REST API server')
+                        help='Bind address for REST API server')
     parser.add_argument('--resolver', default=dns_resolver, nargs='*',
-        help='Servers for recursive DNS resolution')
+                        help='Servers for recursive DNS resolution')
     parser.add_argument('--no-recursion', default=dns_no_resolv,
-        action='store_const', const=1, help='Disables recursive DNS queries')
+                        action='store_const', const=1, help='Disables recursive DNS queries')
     parser.add_argument('--verbose', action='store_const', const=1,
-        help='Be more verbose')
+                        help='Be more verbose')
     parser.add_argument('-q', '--quiet', action='store_const', const=0,
-        help='Quiet mode')
+                        help='Quiet mode')
     return parser.parse_args()
 
 
@@ -88,7 +88,7 @@ def main():
     resolver = () if args.no_recursion else args.resolver
 
     registry = Registry()
- 
+
     app = falcon.API()
     app.add_route('/container/{label}/{arg}', ContainerApi(registry))
     app.add_route('/domain/{domain}', StaticApi(registry))
@@ -109,4 +109,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
