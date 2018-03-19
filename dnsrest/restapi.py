@@ -68,8 +68,10 @@ class StaticApi(BaseApi):
         self._ok(res, {'code': 0})
 
     def on_delete(self, req, res, domain):
-        domain = self._validate_domain(domain)
-        self.registry.deactivate_static(domain)
+        data = self._parse(req)
+        domain, ips = self._validate(domain, data)
+        print 'ips ', ips
+        self.registry.deactivate_static(domain, ips)
         self._ok(res, {'code': 0})
 
     def _validate(self, domain, data):
