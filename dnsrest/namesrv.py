@@ -43,7 +43,7 @@ class DnsServer(DatagramServer):
         if addrs:
             if not isinstance(addrs, list):
                 addrs = [addrs]
-            for addr in addrs:
+            for addr in addrs[0:15]:
                 reply.add_answer(RR(rec.q.qname, QTYPE.A, rdata=A(addr)))
         return reply.pack()
 
