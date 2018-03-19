@@ -41,6 +41,7 @@ class DockerMonitor(object):
             evt = json.loads(raw)
             cid = evt.get('id')
             if cid is None:
+                print "Skipped event: " + str(evt)
                 continue
             status = evt.get('status')
             if status in ('start', 'die'):
