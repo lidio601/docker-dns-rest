@@ -120,7 +120,7 @@ class Registry(object):
             log.info('added %s -> %s key=%s', name.idna(), addr, tag)
         # log.debug('tree %s' % self.dump())
 
-    def _deactivate(self, names, addr, tag=None):
+    def _deactivate(self, names, addr=None, tag=None):
         for name in names:
             if self._domains.get(name):
                 addrs = self._domains.remove(name, addr, tag)
