@@ -1,6 +1,7 @@
 
 # core
 from collections import namedtuple
+from dnslib import DNSLabel
 import json
 import re
 
@@ -34,7 +35,8 @@ class DockerMonitor(object):
         for container in self._docker.containers():
             rec = self._inspect(container['Id'])
             if rec.running:
-                self._registry.activate(rec)    
+                self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
+                self._registry.activate(rec)
 
         # read the docker event stream and update the name table
         for raw in events:
@@ -49,6 +51,7 @@ class DockerMonitor(object):
                     rec = self._inspect(cid)
                     if rec:
                         if status == 'start':
+                            self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
                             self._registry.activate(rec)
                         else:
                             self._registry.deactivate(rec)
