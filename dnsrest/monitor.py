@@ -33,7 +33,7 @@ class DockerMonitor(object):
 
         # bootstrap by activating all running containers
         for container in self._docker.containers():
-            rec = self._inspect(container['Id'])
+            rec = self._inspect(container['Id'], container)
             if rec.running:
                 self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
                 self._registry.activate(rec)
@@ -58,7 +58,7 @@ class DockerMonitor(object):
                 except Exception, e:
                     print str(e)
 
-    def _inspect(self, cid):
+    def _inspect(self, cid, container):
         # get full details on this container from docker
         rec = self._docker.inspect_container(cid)
 
@@ -67,10 +67,23 @@ class DockerMonitor(object):
         if not name:
             return None
         name = RE_VALIDNAME.sub('', name).rstrip('.')
+
+        # default
+        ipAddress = get(rec, 'NetworkSettings', 'IPAddress')
+
+        # fallback in case of docker-compose with custom network
+        if not ipAddress:
+            networkName = get(container, 'HostConfig', 'NetworkMode')
+            ipAddress = get(container, 'NetworkSettings', 'Networks', networkName, 'IPAddress')
+
+        if not ipAddress:
+            raise Exception("Unable to retrieve container ip address - %s" % cid)
+
+        # 'id, name, running, addr'
         return Container(
             get(rec, 'Id'),
             name,
             get(rec, 'State', 'Running'),
-            get(rec, 'NetworkSettings', 'IPAddress')
+            ipAddress
         )
 
