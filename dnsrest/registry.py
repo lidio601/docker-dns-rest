@@ -71,9 +71,9 @@ class Registry(object):
         with self._lock:
             self._activate([domain], addr, tag='domain:/%s' % domain)
 
-    def deactivate_static(self, domain):
+    def deactivate_static(self, domain, addr):
         with self._lock:
-            self._deactivate([domain], tag='domain:/%s' % domain)
+            self._deactivate([domain], addr, tag='domain:/%s' % domain)
 
     def activate(self, container):
         'Activate all rules associated with this container'
@@ -122,10 +122,10 @@ class Registry(object):
             log.info('added %s -> %s key=%s', name.idna(), addr, tag)
         #log.debug('tree %s' % self.dump())
 
-    def _deactivate(self, names, tag=None):
+    def _deactivate(self, names, addr, tag=None):
         for name in names:
             if self._domains.get(name):
-                addrs = self._domains.remove(name, tag)
+                addrs = self._domains.remove(name, addr, tag)
                 if addrs:
                     for addr in addrs:
                         log.info('removed %s -> %s', name.idna(), addr)
