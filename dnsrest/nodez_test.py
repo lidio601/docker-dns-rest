@@ -1,11 +1,9 @@
-
 # core
 import json
 import unittest
 
 # local
 from nodez import Node
-
 
 HOST1 = 'www.foo.com'
 WILD1 = '*.foo.com'
@@ -65,4 +63,3 @@ class NodeTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

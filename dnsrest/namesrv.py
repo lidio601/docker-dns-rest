@@ -1,11 +1,8 @@
-
-
 # libs
-from dnslib import A, DNSHeader, DNSLabel, DNSRecord, QTYPE, RR
+from dnslib import A, DNSHeader, DNSRecord, QTYPE, RR
 from gevent import socket
-from gevent.server import DatagramServer
 from gevent.resolver_ares import Resolver
-
+from gevent.server import DatagramServer
 
 DNS_RESOLVER_TIMEOUT = 3.0
 
@@ -15,7 +12,6 @@ def contains(txt, *subs):
 
 
 class DnsServer(DatagramServer):
-
     '''
     Answers DNS queries against the registry, falling back to the recursive
     resolver (if present).
@@ -27,7 +23,7 @@ class DnsServer(DatagramServer):
         self._resolver = None
         if dns_servers:
             self._resolver = Resolver(servers=dns_servers,
-                timeout=DNS_RESOLVER_TIMEOUT, tries=1)
+                                      timeout=DNS_RESOLVER_TIMEOUT, tries=1)
 
     def handle(self, data, peer):
         rec = DNSRecord.parse(data)
@@ -56,4 +52,3 @@ class DnsServer(DatagramServer):
             msg = str(e)
             if not contains(msg, 'ETIMEOUT', 'ENOTFOUND'):
                 print msg
-

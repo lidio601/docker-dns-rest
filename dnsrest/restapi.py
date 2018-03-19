@@ -1,10 +1,9 @@
-
 # core
 import json
 
+import falcon
 # libs
 from dnslib import A, DNSLabel
-import falcon
 
 
 class BaseApi(object):
@@ -31,8 +30,8 @@ class BaseApi(object):
     def _validate_type(self, key, val, *types):
         if not isinstance(val, types):
             self._fail('The %s must be of type %r, not %r' % \
-                (key, types, type(val)))
-    
+                       (key, types, type(val)))
+
     def _validate_domain(self, domain):
         self._validate_type('domain name', domain, (str, unicode))
         try:
@@ -51,7 +50,6 @@ class BaseApi(object):
 
 
 class StaticApi(BaseApi):
-
     'Expose an API to create and manage static domain to ip mappings'
 
     def __init__(self, registry):
@@ -84,7 +82,6 @@ class StaticApi(BaseApi):
 
 
 class ContainerApi(BaseApi):
-
     'Expose an API to create and manage container name/id domain mappings'
 
     VALID = set(['id', 'name'])
@@ -134,5 +131,3 @@ class DebugApi(BaseApi):
 
     def on_get(self, req, res):
         self._ok(res, self.registry._domains.to_dict(), indent=1)
-
-

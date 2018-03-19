@@ -1,13 +1,12 @@
-
 # core
 import json
+
+# libs
+from gevent import threading
 
 # local
 from logger import log
 from nodez import Node
-
-# libs
-from gevent import threading
 
 
 class Mapping(object):
@@ -18,7 +17,6 @@ class Mapping(object):
 
 
 class Registry(object):
-
     ''''
     Maps a container by id/name to a list of domain names and addresses.
     When the container is started, the list of domain names can be activated,
@@ -120,7 +118,7 @@ class Registry(object):
         for name in names:
             self._domains.put(name, addr, tag)
             log.info('added %s -> %s key=%s', name.idna(), addr, tag)
-        #log.debug('tree %s' % self.dump())
+        # log.debug('tree %s' % self.dump())
 
     def _deactivate(self, names, addr, tag=None):
         for name in names:
@@ -129,7 +127,7 @@ class Registry(object):
                 if addrs:
                     for addr in addrs:
                         log.info('removed %s -> %s', name.idna(), addr)
-        #log.debug('tree %s', self.dump())
+        # log.debug('tree %s', self.dump())
 
     def _get_mapping_by_container(self, container):
         # try name and id-based keys
@@ -140,4 +138,3 @@ class Registry(object):
 
     def _desc(self, container):
         return '%s (%s)' % (container.name, container.id[:10])
-

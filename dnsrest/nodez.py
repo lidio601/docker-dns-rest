@@ -1,10 +1,8 @@
-
 # libs
 from dnslib import DNSLabel
 
 
 class Node(object):
-
     'Stores a tree of domain names with wildcard support'
 
     def __init__(self):
@@ -94,4 +92,3 @@ class Node(object):
 
     def _tagged_addr(self, addr, tag):
         return set([a for a, t in addr if t == tag or tag is None])
-
