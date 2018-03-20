@@ -39,7 +39,7 @@ class DnsServer(DatagramServer):
         rec = DNSRecord.parse(data)
         addr = None
         auth = False
-        if rec.q.qtype in (QTYPE.A, QTYPE.AAAA):
+        if rec.q.qtype in (QTYPE.A, QTYPE.AAAA, QTYPE.ANY):
             addr = self._registry.resolve(rec.q.qname.idna())
             if addr:
                 auth = True
