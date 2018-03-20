@@ -1,3 +1,13 @@
+
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
+
 # core
 import json
 
@@ -68,7 +78,7 @@ class StaticApi(BaseApi):
     def on_delete(self, req, res, domain):
         data = self._parse(req)
         domain, ips = self._validate(domain, data)
-        print 'ips ', ips
+        print ('ips ', ips)
         self.registry.deactivate_static(domain, ips)
         self._ok(res, {'code': 0})
 

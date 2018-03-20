@@ -1,4 +1,13 @@
 
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
+
 # core
 from collections import namedtuple
 from dnslib import DNSLabel
@@ -43,7 +52,7 @@ class DockerMonitor(object):
             evt = json.loads(raw)
             cid = evt.get('id')
             if cid is None:
-                print "Skipped event: " + str(evt)
+                print ("Skipped event: " + str(evt))
                 continue
             status = evt.get('status')
             if status in ('start', 'die'):
@@ -56,7 +65,7 @@ class DockerMonitor(object):
                         else:
                             self._registry.deactivate(rec)
                 except Exception, e:
-                    print str(e)
+                    print (str(e))
 
     def _inspect(self, cid, container):
         # get full details on this container from docker

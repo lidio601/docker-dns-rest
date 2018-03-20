@@ -1,3 +1,13 @@
+
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
+
 # libs
 from dnslib import A, DNSHeader, DNSRecord, QTYPE, RR
 from gevent import socket
@@ -51,7 +61,7 @@ class DnsServer(DatagramServer):
             return None
         try:
             return self._resolver.gethostbyname(name)
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             msg = str(e)
             if not contains(msg, 'ETIMEOUT', 'ENOTFOUND'):
-                print msg
+                print(msg)

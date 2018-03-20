@@ -1,3 +1,13 @@
+
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
+
 # core
 import json
 import unittest
@@ -14,7 +24,7 @@ TAG2 = 'name:/foo2'
 
 
 def dump(n):
-    print 'TREE:\n' + json.dumps(n.to_dict(), indent=4, sort_keys=1)
+    print ('TREE:\n' + json.dumps(n.to_dict(), indent=4, sort_keys=1))
 
 
 class NodeTest(unittest.TestCase):

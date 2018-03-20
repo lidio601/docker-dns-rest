@@ -1,4 +1,13 @@
 
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
+
 # core
 from datetime import datetime
 import sys
@@ -33,8 +42,8 @@ class Logger(object):
 
     def _log(self, msg, *args):
             now = datetime.now().isoformat()
-            line = '%s [%s] %s\n' % (now, self._process, msg % args)
-            sys.stderr.write(line.encode('utf-8'))
+            line = u'%s [%s] %s\n' % (now, self._process, msg % args)
+            sys.stderr.write(line)
             sys.stderr.flush()
 
 

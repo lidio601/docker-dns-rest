@@ -2,6 +2,14 @@
 
 # dnsrest - restful dns service for associating domain names with docker containers
 
+# python 3 compatibility
+from __future__ import print_function
+from future import standard_library
+from functools import reduce
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
 
 # monkey patch
 from gevent import monkey
@@ -13,7 +21,7 @@ import argparse
 import os
 import signal
 import sys
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 # local
 from dnsrest.logger import init_logger, log
