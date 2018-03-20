@@ -1,0 +1,7 @@
+version: '2'
+services:
+  dns:
+    image: lidio601/docker-dns-rest
+    command: --domain example.com
+    volumes:
+     - "/var/run/docker.sock:/var/run/docker.sock"
