@@ -43,6 +43,11 @@ class DnsServer(DatagramServer):
             addr = self._registry.resolve(rec.q.qname.idna())
             if addr:
                 auth = True
+
+                # answer AAAA queries for existing A records
+                # with an successful but empty result
+                if rec.q.qtype == QTYPE.AAAA:
+                    addr = None
             else:
                 addr = self._resolve('.'.join(rec.q.qname.label))
         self.socket.sendto(self._reply(rec, auth, addr), peer)
