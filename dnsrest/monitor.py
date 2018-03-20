@@ -132,11 +132,13 @@ class DockerMonitor(object):
 
         # fallback in case of docker-compose with custom network
         if not ipaddress:
-            networkname = get(data, 'HostConfig', 'NetworkMode')
-            ipaddress = get(data, 'NetworkSettings', 'Networks', networkname, 'IPAddress')
+            network = get(data, 'HostConfig', 'NetworkMode')
+            ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
 
         if not ipaddress:
             raise Exception("Unable to retrieve container ip address - %s" % cid)
+
+        # TODO: what if we have a container connected in multiple networks?
 
         # 'id, name, running, addr'
         return [Container(id, name, state, ipaddress) for name in self._get_names(name, labels)]
