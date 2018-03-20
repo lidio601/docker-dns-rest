@@ -8,62 +8,92 @@ from builtins import map
 from builtins import str
 from builtins import object
 
+# code
+from collections import defaultdict, namedtuple
+
 # libs
 from dnslib import DNSLabel
 
+NodeLink = namedtuple('NodeLink', 'ipaddress, tag')
+
 
 class Node(object):
-    'Stores a tree of domain names with wildcard support'
+    """
+    Stores a tree of domain names with wildcard support
+    """
 
     def __init__(self):
-        self._subs = {}
-        self._wildcard = 0
+        self._subs = defaultdict()
+        self._wildcard = False
         self._addr = []
         self._addr_index = 0
 
+    """
+    Main methods
+    """
+
     def get(self, name):
-        return self._get(self._label(name))
+        res = self._get(Node._label(name))
+
+        if res:
+            res = [tuple(link) for link in res]
+
+        return res
 
     def put(self, name, addr, tag=None):
-        return self._put(self._label(name), addr, tag)
+        return self._put(Node._label(name), addr, tag)
 
-    def remove(self, name, addr=None, tag=None):
-        return self._remove(self._label(name), addr, tag)
+    def remove(self, name, tag=None, addr=None):
+        return self._remove(Node._label(name), addr, tag)
 
     def to_dict(self):
-        r = {}
-        r[':addr'] = self._addr
-        r[':wild'] = self._wildcard
-        for key, sub in self._subs.iteritems():
+        r = defaultdict()
+
+        r[':addr'] = [list(link) for link in self._addr]
+        r[':wildcard'] = self._wildcard
+
+        for key, sub in list(self._subs.items()):
             r[key] = sub.to_dict()
+
         return r
 
-    def _label(self, name):
+    """
+    Private methods
+    """
+
+    @staticmethod
+    def _label(name):
         return list(DNSLabel(name).label)
 
     def _get(self, label):
-        if not label:
-            self._addr_index += 1
-            if len(self._addr) != 0:
-                self._addr_index %= len(self._addr)
-            return self._addr[self._addr_index:] + self._addr[:self._addr_index]
-        part = label.pop()
-        sub = self._subs.get(part)
-        if sub:
-            res = sub._get(label)
-            if res:
-                return res
+
+        # recurse over sub domains
+        if label:
+            part = label.pop()
+            sub = self._subs.get(part)
+            if sub:
+                res = sub._get(label)
+                if res:
+                    return res
+
+#        if not self._wildcard:
+#            return None
+
+        if len(self._addr) == 0:
+            return None
+
         self._addr_index += 1
-        if len(self._addr) != 0:
-            self._addr_index %= len(self._addr)
-        return self._addr[self._addr_index:] + self._addr[:self._addr_index] if self._wildcard else None
+        self._addr_index %= len(self._addr)
+
+        return self._addr[self._addr_index:] + self._addr[:self._addr_index]
 
     def _put(self, label, addr, tag=None):
         part = label.pop()
+        link = NodeLink(addr, tag)
 
         if not label and part == '*':
-            self._wildcard = 1
-            self._addr.append((addr, tag))
+            self._wildcard = True
+            self._addr.append(link)
             return
 
         sub = self._subs.get(part)
@@ -72,7 +102,7 @@ class Node(object):
             self._subs[part] = sub
 
         if not label:
-            sub._addr.append((addr, tag))
+            sub._addr.append(link)
             return
 
         sub._put(label, addr, tag)
@@ -85,7 +115,7 @@ class Node(object):
                 tagged = self._tagged_addr(self._addr, tag)
                 addr = tagged if not addr else addr
                 self._addr = [(a, t) for a, t in self._addr if a not in addr]
-                self._wildcard = 0 if not self._addr else 1
+                self._wildcard = False if not self._addr else True
                 return tagged
             elif sub:
                 tagged = self._tagged_addr(sub._addr, tag)
@@ -94,9 +124,9 @@ class Node(object):
                 return tagged
         elif sub:
             sub._remove(label, addr, tag)
+            if sub and sub._is_empty():
+                del self._subs[part]
 
-        if sub and sub._is_empty():
-            del self._subs[part]
         return []
 
     def _is_empty(self):
