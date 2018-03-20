@@ -52,21 +52,33 @@ class DockerMonitor(object):
         # read the docker event stream and update the name table
         for raw in events:
             evt = json.loads(raw)
+
+            # Looks like in Docker 1.10 we can get events of type "Network"
+            # that I am assuming are a result of the new network features added in this release.
+            # These network events cause dockerdn to crash. Let's just ignore them.
+            if evt.get('Type', 'container') != 'container':
+                print("Skipped event: " + str(evt))
+                continue
+
             cid = evt.get('id')
             if cid is None:
                 print ("Skipped event: " + str(evt))
                 continue
+
             status = evt.get('status')
-            if status in ('start', 'die'):
-                try:
-                    for rec in self._inspect(cid):
-                        if status == 'start':
-                            self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
-                            self._registry.activate(rec)
-                        else:
-                            self._registry.deactivate(rec)
-                except Exception, e:
-                    print (str(e))
+            if status not in ('start', 'die'):
+                print("Skipped event: " + str(evt))
+                continue
+
+            try:
+                for rec in self._inspect(cid):
+                    if status == 'start':
+                        self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
+                        self._registry.activate(rec)
+                    else:
+                        self._registry.deactivate(rec)
+            except Exception, e:
+                print (str(e))
 
     def _get_names(self, name, labels):
         names = [RE_VALIDNAME.sub('', name).rstrip('.')]
