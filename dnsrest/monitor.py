@@ -34,9 +34,10 @@ class DockerMonitor(object):
     Reads events from Docker and activates/deactivates container domain names
     '''
 
-    def __init__(self, client, registry):
-        self._docker = client
+    def __init__(self, client, registry, domain):
+        self._docker   = client
         self._registry = registry
+        self._domain   = domain.lstrip('.')
 
     def run(self):
         # start the event poller, but don't read from the stream yet
@@ -125,18 +126,23 @@ class DockerMonitor(object):
 #        name = RE_VALIDNAME.sub('', name).rstrip('.')
 
         # commented since phensley/docker-dns/commit/1ee3a2525f58881c52ed50e849ab5b7e43f56ec3
-#        name += '.' + self._domain
+        name = '.'.join((name, self._domain))
 
+        ipaddress = None
+
+        # try to support multiple ip addresses
         networks = get(rec, 'NetworkSettings', 'Networks')
-        ipaddress = [value['IPAddress'] for value in networks.values()]
+        if networks:
+            ipaddress = [value['IPAddress'] for value in networks.values()]
 
-#        # default
-#        ipaddress = [get(rec, 'NetworkSettings', 'IPAddress')]
-#
-#        # fallback in case of docker-compose with custom network
-#        if not ipaddress:
-#            network = get(data, 'HostConfig', 'NetworkMode')
-#            ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
+        # default
+        if not ipaddress:
+            ipaddress = [get(rec, 'NetworkSettings', 'IPAddress')]
+
+        # fallback in case of docker-compose with custom network
+        if not ipaddress:
+            network = get(data, 'HostConfig', 'NetworkMode')
+            ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
 
         if not ipaddress:
             raise Exception("Unable to retrieve container ip address - %s" % cid)

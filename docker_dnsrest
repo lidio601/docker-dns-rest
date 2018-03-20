@@ -71,6 +71,8 @@ def parse_args():
                         help='Bind address for DNS server')
     parser.add_argument('--rest-bind', default=dns_rest_addr,
                         help='Bind address for REST API server')
+    parser.add_argument('--domain', default='docker',
+                        help='Base domain name for registered services')
     parser.add_argument('--resolver', default=dns_resolver, nargs='*',
                         help='Servers for recursive DNS resolution')
     parser.add_argument('--no-recursion', default=dns_no_resolv,
@@ -95,7 +97,7 @@ def main():
     init_logger(process=PROCESS, quiet=args.quiet, verbose=args.verbose)
     resolver = () if args.no_recursion else args.resolver
 
-    registry = Registry()
+    registry = Registry(args.domain)
 
     app = falcon.API()
     app.add_route('/container/{label}/{arg}', ContainerApi(registry))
@@ -111,7 +113,7 @@ def main():
         gevent.signal(signum, stop, api, dns)
 
     client = docker.Client(args.docker, version=DOCKER_VERSION)
-    monitor = DockerMonitor(client, registry)
+    monitor = DockerMonitor(client, registry, args.domain)
     gevent.wait([gevent.spawn(monitor.run)])
 
 

@@ -35,11 +35,12 @@ class Registry(object):
     deactivated.
     '''
 
-    def __init__(self):
+    def __init__(self, domain):
         self._mappings = defaultdict(set)
         self._active = {}
         self._domains = Node()
         self._lock = threading.Lock()
+        self._domain = domain.lstrip('.')
 
     def add(self, key, names):
         ''''
@@ -167,6 +168,10 @@ class Registry(object):
             return
 
         old_name = old_name.lstrip('/')
+
+        old_name = '.'.join((old_name, self._domain))
+        new_name = '.'.join((new_name, self._domain))
+
         old_key = 'name:/%s' % old_name
         new_key = 'name:/%s' % new_name
 
