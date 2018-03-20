@@ -148,3 +148,20 @@ class Registry(object):
 
     def _desc(self, container):
         return '%s (%s)' % (container.name, container.id[:10])
+
+    #
+    # Support container renames, newer Docker API versions.
+    #
+    def rename(self, old_name, new_name):
+        if not old_name or not new_name:
+            return
+
+        old_name = old_name.lstrip('/')
+        old_key = 'name:/%s' % old_name
+        with self._lock:
+            mapping = self._mappings.get(old_key)
+            if mapping:
+                del self._mappings[old_key]
+                new_key = 'name:/%s' % new_name
+                self._mappings[new_key] = mapping
+                log('renamed (%s -> %s) == %s', old_name, new_name, mapping)

@@ -14,6 +14,8 @@ from dnslib import DNSLabel
 import json
 import re
 
+# local
+from dnsrest.logger import init_logger, log
 
 RE_VALIDNAME = re.compile('[^\w\d.-]')
 
@@ -66,7 +68,7 @@ class DockerMonitor(object):
                 continue
 
             status = evt.get('status')
-            if status not in ('start', 'die'):
+            if status not in ('start', 'die', 'rename'):
                 print("Skipped event: " + str(evt))
                 continue
 
@@ -75,10 +77,18 @@ class DockerMonitor(object):
                     if status == 'start':
                         self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
                         self._registry.activate(rec)
+
+                    elif status == 'rename':
+                        old_name = get(evt, 'Actor', 'Attributes', 'oldName')
+                        new_name = get(evt, 'Actor', 'Attributes', 'name')
+#                        old_name = '.'.join((old_name, self._domain))
+#                        new_name = '.'.join((new_name, self._domain))
+                        self._registry.rename(old_name, new_name)
+
                     else:
                         self._registry.deactivate(rec)
-            except Exception, e:
-                print (str(e))
+            except Exception as e:
+                log('Error: %s', e)
 
     def _get_names(self, name, labels):
         names = [RE_VALIDNAME.sub('', name).rstrip('.')]
