@@ -9,6 +9,7 @@ from builtins import str
 from builtins import object
 
 # core
+from collections import defaultdict
 import json
 
 # libs
@@ -35,7 +36,7 @@ class Registry(object):
     '''
 
     def __init__(self):
-        self._mappings = {}
+        self._mappings = defaultdict(set)
         self._active = {}
         self._domains = Node()
         self._lock = threading.Lock()
@@ -59,13 +60,21 @@ class Registry(object):
             for container in self._active.itervalues():
                 if key in ('name:/' + container.name, 'id:/' + container.id):
                     desc = self._desc(container)
-                    self._activate(names, container.addr, tag=key)
+                    for addr in container.addrs:
+                        self._activate(names, addr, tag=key)
 
     def get(self, key):
         with self._lock:
             mapping = self._mappings.get(key)
+
+            if not mapping:
+                log('table.get %s with NoneType' % (key))
+            else:
+                log('table.get %s with %s' % (mapping, ", ".join(addr for addr in mapping)))
+
             if mapping:
                 return [n.idna().rstrip('.') for n in mapping.names]
+
             return []
 
     def remove(self, key):
@@ -73,7 +82,7 @@ class Registry(object):
             old_mapping = self._mappings.get(key)
             if old_mapping:
                 self._deactivate(old_mapping.names, tag=old_mapping.key)
-                del self._mappings[old_mapping.key]
+                self._mappings.pop(old_mapping.key)
 
     def activate_static(self, domain, addr):
         with self._lock:
@@ -92,7 +101,8 @@ class Registry(object):
             if mapping:
                 log.info('setting %s as active' % desc)
                 key, names = mapping.key, mapping.names
-                self._activate(names, container.addr, tag=key)
+                for addr in container.addrs:
+                    self._activate(names, addr, tag=key)
 
     def deactivate(self, container):
         'Deactivate all rules associated with this container'
@@ -158,10 +168,12 @@ class Registry(object):
 
         old_name = old_name.lstrip('/')
         old_key = 'name:/%s' % old_name
+        new_key = 'name:/%s' % new_name
+
         with self._lock:
-            mapping = self._mappings.get(old_key)
+            mapping = self._mappings.pop(old_key)
+
             if mapping:
-                del self._mappings[old_key]
-                new_key = 'name:/%s' % new_name
+                mapping.key = new_key
                 self._mappings[new_key] = mapping
                 log('renamed (%s -> %s) == %s', old_name, new_name, mapping)

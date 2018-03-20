@@ -37,28 +37,31 @@ class DnsServer(DatagramServer):
 
     def handle(self, data, peer):
         rec = DNSRecord.parse(data)
-        addr = None
+        addrs = None
         auth = False
         if rec.q.qtype in (QTYPE.A, QTYPE.AAAA, QTYPE.ANY):
-            addr = self._registry.resolve(rec.q.qname.idna())
-            if addr:
+            addrs = self._registry.resolve(rec.q.qname.idna()) or set()
+            if addrs:
                 auth = True
 
                 # answer AAAA queries for existing A records
                 # with an successful but empty result
                 if rec.q.qtype == QTYPE.AAAA:
-                    addr = None
+                    addrs = None
             else:
-                addr = self._resolve('.'.join(rec.q.qname.label))
-        self.socket.sendto(self._reply(rec, auth, addr), peer)
+                addrs.add(self._resolve('.'.join(rec.q.qname.label)))
+
+        self.socket.sendto(self._reply(rec, auth, addrs), peer)
 
     def _reply(self, rec, auth, addrs=None):
         reply = DNSRecord(DNSHeader(id=rec.header.id, qr=1, aa=auth, ra=bool(self._resolver)), q=rec.q)
         if addrs:
             if not isinstance(addrs, list):
                 addrs = [addrs]
+
             for addr in addrs[0:15]:
                 reply.add_answer(RR(rec.q.qname, QTYPE.A, rdata=A(addr)))
+
         return reply.pack()
 
     def _resolve(self, name):

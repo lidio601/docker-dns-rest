@@ -20,7 +20,7 @@ from dnsrest.logger import init_logger, log
 RE_VALIDNAME = re.compile('[^\w\d.-]')
 
 
-Container = namedtuple('Container', 'id, name, running, addr')
+Container = namedtuple('Container', 'id, name, running, addrs')
 
 
 def get(d, *keys):
@@ -127,13 +127,16 @@ class DockerMonitor(object):
         # commented since phensley/docker-dns/commit/1ee3a2525f58881c52ed50e849ab5b7e43f56ec3
 #        name += '.' + self._domain
 
-        # default
-        ipaddress = get(rec, 'NetworkSettings', 'IPAddress')
+        networks = get(rec, 'NetworkSettings', 'Networks')
+        ipaddress = [value['IPAddress'] for value in networks.values()]
 
-        # fallback in case of docker-compose with custom network
-        if not ipaddress:
-            network = get(data, 'HostConfig', 'NetworkMode')
-            ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
+#        # default
+#        ipaddress = [get(rec, 'NetworkSettings', 'IPAddress')]
+#
+#        # fallback in case of docker-compose with custom network
+#        if not ipaddress:
+#            network = get(data, 'HostConfig', 'NetworkMode')
+#            ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
 
         if not ipaddress:
             raise Exception("Unable to retrieve container ip address - %s" % cid)

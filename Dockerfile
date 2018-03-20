@@ -1,4 +1,4 @@
-FROM alpine:3.3
+FROM alpine:latest
 MAINTAINER "Fabio Cigliano"
 
 WORKDIR /app
@@ -6,9 +6,9 @@ WORKDIR /app
 ENV PY=2.7.12-r0
 COPY ./requirements.txt requirements.txt
 RUN apk add --update python=${PY} python-dev=${PY} \
-                     gcc libgcc libc-dev py-pip libev \
+                     gcc libgcc libc-dev py2-pip libev \
     && pip install -r requirements.txt \
-    && apk del python-dev gcc libgcc libc-dev py-pip libev \
+    && apk del python-dev gcc libgcc libc-dev py2-pip libev \
     && rm -rf /tmp/* \
     && rm -rf /var/cache/apk/*
 
