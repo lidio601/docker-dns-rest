@@ -42,10 +42,12 @@ class DockerMonitor(object):
 
         # bootstrap by activating all running containers
         for container in self._docker.containers():
-            rec = self._inspect(container['Id'], container)
-            if rec.running:
-                self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
-                self._registry.activate(rec)
+            # If a container has been started by docker-compose, it is registered
+            # under <service>.<project>.<domain>, as well as under <name>.<domain>.
+            for rec in self._inspect(container['Id'], container):
+                if rec.running:
+                    self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
+                    self._registry.activate(rec)
 
         # read the docker event stream and update the name table
         for raw in events:
@@ -57,8 +59,7 @@ class DockerMonitor(object):
             status = evt.get('status')
             if status in ('start', 'die'):
                 try:
-                    rec = self._inspect(cid)
-                    if rec:
+                    for rec in self._inspect(cid):
                         if status == 'start':
                             self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
                             self._registry.activate(rec)
@@ -67,32 +68,53 @@ class DockerMonitor(object):
                 except Exception, e:
                     print (str(e))
 
-    def _inspect(self, cid, container):
+    def _get_names(self, name, labels):
+        names = [RE_VALIDNAME.sub('', name).rstrip('.')]
+
+        labels = labels or {}
+        instance = int(labels.get('com.docker.compose.container-number', 1))
+        service = labels.get('com.docker.compose.service')
+        project = labels.get('com.docker.compose.project')
+
+        if all((instance, service, project)):
+            names.append('%d.%s.%s' % (instance, service, project))
+
+            # the first instance of a service is available without number
+            # prefix
+            if instance == 1:
+                names.append('%s.%s' % (service, project))
+
+        return ['.'.join((name, self._domain)) for name in names]
+
+    def _inspect(self, cid, data):
         # get full details on this container from docker
         rec = self._docker.inspect_container(cid)
+
+        id = get(rec, 'Id')
+
+        labels = get(rec, 'Config', 'Labels')
+
+        state = get(rec, 'State', 'Running')
 
         # ensure name is valid, and append our domain
         name = get(rec, 'Name')
         if not name:
             return None
-        name = RE_VALIDNAME.sub('', name).rstrip('.')
+#        name = RE_VALIDNAME.sub('', name).rstrip('.')
+
+        # commented since phensley/docker-dns/commit/1ee3a2525f58881c52ed50e849ab5b7e43f56ec3
+#        name += '.' + self._domain
 
         # default
-        ipAddress = get(rec, 'NetworkSettings', 'IPAddress')
+        ipaddress = get(rec, 'NetworkSettings', 'IPAddress')
 
         # fallback in case of docker-compose with custom network
-        if not ipAddress:
-            networkName = get(container, 'HostConfig', 'NetworkMode')
-            ipAddress = get(container, 'NetworkSettings', 'Networks', networkName, 'IPAddress')
+        if not ipaddress:
+            networkname = get(data, 'HostConfig', 'NetworkMode')
+            ipaddress = get(data, 'NetworkSettings', 'Networks', networkname, 'IPAddress')
 
-        if not ipAddress:
+        if not ipaddress:
             raise Exception("Unable to retrieve container ip address - %s" % cid)
 
         # 'id, name, running, addr'
-        return Container(
-            get(rec, 'Id'),
-            name,
-            get(rec, 'State', 'Running'),
-            ipAddress
-        )
-
+        return [Container(id, name, state, ipaddress) for name in self._get_names(name, labels)]
