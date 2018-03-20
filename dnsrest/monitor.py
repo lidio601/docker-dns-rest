@@ -15,7 +15,7 @@ import json
 import re
 
 # local
-from dnsrest.logger import init_logger, log
+from dnsrest.logger import log
 
 RE_VALIDNAME = re.compile('[^\w\d.-]')
 
@@ -60,17 +60,17 @@ class DockerMonitor(object):
             # that I am assuming are a result of the new network features added in this release.
             # These network events cause dockerdn to crash. Let's just ignore them.
             if evt.get('Type', 'container') != 'container':
-                print("Skipped event: " + str(evt))
+                log.debug("Skipped event:", evt)
                 continue
 
             cid = evt.get('id')
             if cid is None:
-                print ("Skipped event: " + str(evt))
+                log.debug("Skipped event:", evt)
                 continue
 
             status = evt.get('status')
             if status not in ('start', 'die', 'rename'):
-                print("Skipped event: " + str(evt))
+                log.debug("Skipped event:", evt)
                 continue
 
             try:
@@ -89,7 +89,7 @@ class DockerMonitor(object):
                     else:
                         self._registry.deactivate(rec)
             except Exception as e:
-                log('Error: %s', e)
+                log.error('Error: %s', e)
 
     def _get_names(self, name, labels):
         names = [RE_VALIDNAME.sub('', name).rstrip('.')]
@@ -109,7 +109,7 @@ class DockerMonitor(object):
 
         return ['.'.join((name, self._domain)) for name in names]
 
-    def _inspect(self, cid, data):
+    def _inspect(self, cid, data=None):
         # get full details on this container from docker
         rec = self._docker.inspect_container(cid)
 
@@ -137,15 +137,17 @@ class DockerMonitor(object):
 
         # default
         if not ipaddress:
-            ipaddress = [get(rec, 'NetworkSettings', 'IPAddress')]
+            ipaddress = get(rec, 'NetworkSettings', 'IPAddress')
+            ipaddress = [ipaddress] if ipaddress else ipaddress
 
         # fallback in case of docker-compose with custom network
-        if not ipaddress:
+        if not ipaddress and data:
             network = get(data, 'HostConfig', 'NetworkMode')
             ipaddress = get(data, 'NetworkSettings', 'Networks', network, 'IPAddress')
 
         if not ipaddress:
-            raise Exception("Unable to retrieve container ip address - %s" % cid)
+            ipaddress = []
+#            raise Exception("Unable to retrieve container ip address", cid)
 
         # TODO: what if we have a container connected in multiple networks?
 
