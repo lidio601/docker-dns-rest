@@ -3,7 +3,7 @@ MAINTAINER "Fabio Cigliano"
 
 WORKDIR /app
 
-ENV PY=2.7.12-r0
+ENV PY=2.7.14-r2
 COPY ./requirements.txt requirements.txt
 RUN apk add --update python=${PY} python-dev=${PY} \
                      gcc libgcc libc-dev py2-pip libev \
