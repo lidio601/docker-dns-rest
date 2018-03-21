@@ -1,8 +1,8 @@
 [run]
 branch = true
-source =
+include =
     docker_dnsrest
-    dnsrest
+    dnsrest/*
 omit = dnsrest/__init__.py
 
 [report]

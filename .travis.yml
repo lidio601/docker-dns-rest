@@ -74,8 +74,7 @@ install:
         codecov \
         coverage \
         $NOSE \
-        codecov \
-        coverage
+        codecov
     python -mpip install $PRE \
         $PYTEST \
         $PYTEST_COV \
@@ -98,5 +97,5 @@ after_failure:
     if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == 'lidio601/docker-dns-rest' ]]; then
       echo 'See logs'
     fi
-after_success:
-  - codecov -e TRAVIS_PYTHON_VERSION
+#after_success:
+#  - codecov -e TRAVIS_PYTHON_VERSION
