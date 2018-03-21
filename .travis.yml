@@ -20,28 +20,28 @@ env:
 
 matrix:
   include:
-    - python: 3.5
-      # pytest-cov>=2.3.1 due to https://github.com/pytest-dev/pytest-cov/issues/124.
-      env:
-        - CYCLER=cycler==0.10
-        - NOSE=nose
-        - PYTEST=pytest==3.1.0
-        - PYTEST_COV=pytest-cov==2.3.1
-    - python: 3.5
-      env: PYTHON_ARGS=-OO
-    - python: 3.6
-      env: DELETE_FONT_CACHE=1 PYTEST_PEP8=pytest-pep8 RUN_PEP8=--pep8
-    - python: "nightly"
-      env: PRE=--pre
-    - os: osx
-      language: generic  # https://github.com/travis-ci/travis-ci/issues/2312
-      only: master
-      cache:
-        # As for now travis caches only "$HOME/.cache/pip"
-        # https://docs.travis-ci.com/user/caching/#pip-cache
-        pip: false
-        directories:
-          - $HOME/Library/Caches/pip
+#    - python: 3.5
+#      # pytest-cov>=2.3.1 due to https://github.com/pytest-dev/pytest-cov/issues/124.
+#      env:
+#        - CYCLER=cycler==0.10
+#        - NOSE=nose
+#        - PYTEST=pytest==3.1.0
+#        - PYTEST_COV=pytest-cov==2.3.1
+#    - python: 3.5
+#      env: PYTHON_ARGS=-OO
+#    - python: 3.6
+#      env: DELETE_FONT_CACHE=1 PYTEST_PEP8=pytest-pep8 RUN_PEP8=--pep8
+#    - python: "nightly"
+#      env: PRE=--pre
+#    - os: osx
+#      language: generic  # https://github.com/travis-ci/travis-ci/issues/2312
+#      only: master
+#      cache:
+#        # As for now travis caches only "$HOME/.cache/pip"
+#        # https://docs.travis-ci.com/user/caching/#pip-cache
+#        pip: false
+#        directories:
+#          - $HOME/Library/Caches/pip
     - python: 2.7.14
   allow_failures:
     - python: "nightly"
