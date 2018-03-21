@@ -1,18 +1,16 @@
-
 # python 3 compatibility
 from __future__ import print_function
 from future import standard_library
-from functools import reduce
+
 standard_library.install_aliases()
-from builtins import map
 from builtins import str
-from builtins import object
 
 # libs
 from dnslib import A, DNSHeader, DNSRecord, QTYPE, RR
-from gevent import socket
 from gevent.resolver_ares import Resolver
 from gevent.server import DatagramServer
+
+from logger import log
 
 DNS_RESOLVER_TIMEOUT = 3.0
 
@@ -22,10 +20,10 @@ def contains(txt, *subs):
 
 
 class DnsServer(DatagramServer):
-    '''
+    """
     Answers DNS queries against the registry, falling back to the recursive
     resolver (if present).
-    '''
+    """
 
     def __init__(self, bindaddr, registry, dns_servers=None):
         DatagramServer.__init__(self, bindaddr)
@@ -41,6 +39,7 @@ class DnsServer(DatagramServer):
         auth = False
         if rec.q.qtype in (QTYPE.A, QTYPE.AAAA, QTYPE.ANY):
             addrs = self._registry.resolve(rec.q.qname.idna()) or set()
+
             if addrs:
                 auth = True
 
@@ -66,10 +65,14 @@ class DnsServer(DatagramServer):
 
     def _resolve(self, name):
         if not self._resolver:
+            log.info("DnsServer._resolve is not set")
             return None
+
         try:
             return self._resolver.gethostbyname(name)
-        except socket.gaierror as e:
-            msg = str(e)
-            if not contains(msg, 'ETIMEOUT', 'ENOTFOUND'):
-                print(msg)
+        except Exception as e:
+            # socket.gaierror as e:
+            if not contains(str(e), 'ETIMEOUT', 'ENOTFOUND'):
+                log.error("Exception in DnsServer._resolve", e)
+        finally:
+            return None
