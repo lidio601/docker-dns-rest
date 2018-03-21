@@ -74,7 +74,7 @@ install:
         coverage \
         $NOSE \
         codecov \
-        coverage \
+        coverage
     python -mpip install $PRE \
         $PYTEST \
         $PYTEST_COV \
