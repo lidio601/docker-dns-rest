@@ -1,14 +1,14 @@
 
+docker-dns-rest
+---------------
+
+|Travis|_ |Codecov|_
+
 .. |Travis| image:: https://travis-ci.org/lidio601/docker-dns-rest.svg?branch=master
 .. _Travis: https://travis-ci.org/lidio601/docker-dns-rest
 
 .. |Codecov| image:: https://codecov.io/github/lidio601/docker-dns-rest/badge.svg?branch=master&service=github
 .. _Codecov: https://codecov.io/github/lidio601/docker-dns-rest?branch=master
-
-docker-dns-rest
----------------
-
-|Travis|_ |Codecov|_
 
 A RESTful DNS service for Docker containers.
 
