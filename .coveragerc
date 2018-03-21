@@ -1,5 +1,7 @@
 [run]
 branch = true
+source =
+    *.py
 include =
     docker_dnsrest
     dnsrest/*

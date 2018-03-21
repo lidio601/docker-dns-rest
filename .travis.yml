@@ -14,7 +14,8 @@ env:
     - PYTEST_PEP8=
     - NPROC=2
     - RUN_PEP8=
-    - PYTEST_ARGS="-rawR --maxfail=50 --timeout=300 --durations=25 --cov-report= --cov=lib -n $NPROC"
+    - PYTEST_ARGS="-rawR --maxfail=50 --durations=25"
+#    - PYTEST_ARGS="-rawR --maxfail=50 --timeout=300 --durations=25 --cov-report= --cov=lib -n $NPROC"
     - PYTHON_ARGS=
 
 matrix:
@@ -98,4 +99,4 @@ after_failure:
       echo 'See logs'
     fi
 #after_success:
-#  - codecov -e TRAVIS_PYTHON_VERSION
+#  - codecov -e TRAVIS_PYTHON_VERSION -e DNS_PORT=65053 -e API_PORT=65080
