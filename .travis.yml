@@ -41,7 +41,7 @@ matrix:
         pip: false
         directories:
           - $HOME/Library/Caches/pip
-    - python: 2.7.14-r2
+    - python: 2.7.14
   allow_failures:
     - python: "nightly"
 
