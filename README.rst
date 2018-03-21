@@ -2,13 +2,19 @@
 docker-dns-rest
 ---------------
 
-|Travis|_ |Codecov|_
+|Travis|_ |Codecov|_ |Docker Hub Automated|_ |Docker Hub Build|_
 
 .. |Travis| image:: https://travis-ci.org/lidio601/docker-dns-rest.svg?branch=master
 .. _Travis: https://travis-ci.org/lidio601/docker-dns-rest
 
 .. |Codecov| image:: https://codecov.io/github/lidio601/docker-dns-rest/badge.svg?branch=master&service=github
 .. _Codecov: https://codecov.io/github/lidio601/docker-dns-rest?branch=master
+
+.. |Docker Hub Automated| image:: https://img.shields.io/docker/automated/lidio601/docker-dns-rest.svg
+.. _Docker Hub Automated: https://hub.docker.com/r/lidio601/docker-dns-rest/
+
+.. |Docker Hub Build| image:: https://img.shields.io/docker/build/lidio601/docker-dns-rest.svg
+.. _Docker Hub Build: https://hub.docker.com/r/lidio601/docker-dns-rest/
 
 A RESTful DNS service for Docker containers.
 
