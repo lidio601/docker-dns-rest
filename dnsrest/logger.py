@@ -46,7 +46,7 @@ class Logger(object):
         sys.stderr.flush()
 
 
-def init_logger(process=None, quiet=0, verbose=0):
+def init_logger(process=None, quiet=True, verbose=True):
     """
     Setup global instance
     """

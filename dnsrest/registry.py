@@ -21,46 +21,133 @@ from nodez import Node
 
 
 class Mapping(object):
+    """
+    Mapping to link a key to a list of domain names
+    A key can be:
+    - name:/%s
+    - id:/%s
+    """
+    key = None
+    names = []
 
-    def __init__(self, names, key):
-        self.names = names
+    def __init__(self, key, names):
         self.key = key
+        self.names = [names] if not isinstance(names, list) else names
+
+    def __str__(self):
+        return "map %s => %s" % (self.key, self.names)
+
+
+class Container(object):
+    """
+    A custom representation of the container data
+    coming from Docker api
+    """
+    id = None
+    name = None
+    addrs = []
+
+    def __init__(self, container=None):
+        if container:
+            self.id = container.id
+            self.name = container.name
+            self.addrs = container.addrs
+
+    def __str__(self):
+        return '%s (%s)' % (self.name, self.id[:10] if self.id else None)
 
 
 class Registry(object):
-    ''''
+    """
     Maps a container by id/name to a list of domain names and addresses.
     When the container is started, the list of domain names can be activated,
     and when the container is stopped the list of domain names can be
     deactivated.
-    '''
+    """
 
-    def __init__(self, domain):
+    def __init__(self, domain=None):
         self._mappings = defaultdict(set)
-        self._active = {}
+        self._active = defaultdict()
         self._domains = Node()
         self._lock = threading.Lock()
-        self._domain = domain.lstrip('.')
+        self._domain = domain.lstrip('.') if domain else None
+
+    def __str__(self):
+        return json.dumps(self._domains.to_dict(), indent=4, sort_keys=1)
+
+    def dump(self):
+        return str(self)
+
+    def _activate(self, names, addr, tag=None):
+        # ensure that is a list of addr
+        addrs = [addr] if not isinstance(addr, list) else addr
+
+        for name in names:
+            for addr in addrs:
+                log.info('added %s -> %s key=%s', name.idna(), addr, tag)
+                self._domains.put(name, addr, tag)
+#        log.debug('tree %s' % self.dump())
+
+    def _deactivate(self, names, addr=None, tag=None):
+        # ensure that is a list of addr
+        addrs = [addr] if not isinstance(addr, list) else addr
+
+        for name in names:
+            if self._domains.get(name):
+                addrs = self._domains.remove(name, tag, addrs)
+                log.info('removing domains %s -> %s key = %s', name.idna(), addrs, tag)
+
+                if addrs:
+                    for addr in addrs:
+                        log.info('removed %s -> %s', name.idna(), addr)
+#        log.debug('tree %s', self.dump())
+
+    def _get_mapping_by_container(self, container):
+        """
+        try name and id-based keys
+        :param Container container:
+        :return:
+        """
+
+        # try matching by name
+        res = self._mappings.get('name:/%s' % container.name)
+
+        if not res:
+            # try matching by id
+            res = self._mappings.get('id:/%s' % container.id)
+
+        return res
+
+    def remove(self, key):
+        with self._lock:
+            old_mapping = self._mappings.get(key)
+
+            if old_mapping:
+                log.info('table.remove %s' % old_mapping)
+                self._deactivate(old_mapping.names, tag=old_mapping.key)
+                self._mappings.pop(old_mapping.key)
 
     def add(self, key, names):
-        ''''
+        """
         Adds a mapping from the given key to a list of names. The names
         will be registered when the container is activated (running) and
         unregistered when the container is deactivated (stopped).
-        '''
+        """
+
         # first, remove the old names, if any
         self.remove(key)
 
         with self._lock:
             # persist the mappings
-            self._mappings[key] = Mapping(names, key)
+            self._mappings[key] = Mapping(key, names)
 
-            # check if these pertain to any already-active containers and
-            # activate the domain names
-            activate = []
-            for container in self._active.itervalues():
+            # check if these pertain to any already-active
+            # containers and activate the domain names
+            for container in list(self._active.items()):
+                """
+                :var Container container
+                """
                 if key in ('name:/' + container.name, 'id:/' + container.id):
-                    desc = self._desc(container)
                     for addr in container.addrs:
                         self._activate(names, addr, tag=key)
 
@@ -69,60 +156,70 @@ class Registry(object):
             mapping = self._mappings.get(key)
 
             if not mapping:
-                log('table.get %s with NoneType' % (key))
+                log.debug('table.get %s with NoneType' % key)
             else:
-                log('table.get %s with %s' % (mapping, ", ".join(addr for addr in mapping)))
+                log.info('table.get %s with %s' % (mapping, ", ".join(addr for addr in mapping)))
 
             if mapping:
                 return [n.idna().rstrip('.') for n in mapping.names]
 
             return []
 
-    def remove(self, key):
-        with self._lock:
-            old_mapping = self._mappings.get(key)
-            if old_mapping:
-                self._deactivate(old_mapping.names, tag=old_mapping.key)
-                self._mappings.pop(old_mapping.key)
-
     def activate_static(self, domain, addr):
         with self._lock:
+            log.info('table.activate %s with %s' % (domain, addr))
             self._activate([domain], addr, tag='domain:/%s' % domain)
 
     def deactivate_static(self, domain, addr):
         with self._lock:
+            log.info('table.deactivate %s with %s' % (domain, addr))
             self._deactivate([domain], addr, tag='domain:/%s' % domain)
 
     def activate(self, container):
-        'Activate all rules associated with this container'
-        desc = self._desc(container)
+        """
+        Activate all rules associated with this container
+        :param Container container:
+        :return:
+        """
         with self._lock:
             self._active[container.id] = container
+
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as active' % desc)
+                log.info('setting %s as active' % container)
+
                 key, names = mapping.key, mapping.names
                 for addr in container.addrs:
                     self._activate(names, addr, tag=key)
 
     def deactivate(self, container):
-        'Deactivate all rules associated with this container'
+        """
+        Deactivate all rules associated with this container
+        :param Container container:
+        :return:
+        """
         with self._lock:
             old_container = self._active.get(container.id)
+
             if old_container is None:
                 return
-            del self._active[container.id]
+            else:
+                del self._active[container.id]
 
-            # since this container is active, get the old address so we can log
-            # exactly which names/addresses are being deactivated
-            desc = self._desc(container)
+            # since this container is active, get the old address
+            # so we can log exactly which names/addresses
+            # are being deactivated
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as inactive' % desc)
+                log.info('setting %s as inactive' % container)
                 self._deactivate(mapping.names, tag=mapping.key)
 
     def resolve(self, name):
-        'Resolves the address for this name, if any'
+        """
+        Resolves the address for this name, if any
+        :param name:
+        :return:
+        """
         with self._lock:
             res = self._domains.get(name)
             if res:
@@ -131,34 +228,6 @@ class Registry(object):
                 return addrs
             else:
                 log.debug('no mapping for %s' % name)
-
-    def dump(self):
-        return json.dumps(self._domains.to_dict(), indent=4, sort_keys=1)
-
-    def _activate(self, names, addr, tag=None):
-        for name in names:
-            self._domains.put(name, addr, tag)
-            log.info('added %s -> %s key=%s', name.idna(), addr, tag)
-        # log.debug('tree %s' % self.dump())
-
-    def _deactivate(self, names, addr=None, tag=None):
-        for name in names:
-            if self._domains.get(name):
-                addrs = self._domains.remove(name, addr, tag)
-                if addrs:
-                    for addr in addrs:
-                        log.info('removed %s -> %s', name.idna(), addr)
-        # log.debug('tree %s', self.dump())
-
-    def _get_mapping_by_container(self, container):
-        # try name and id-based keys
-        res = self._mappings.get('name:/%s' % container.name)
-        if not res:
-            res = self._mappings.get('id:/%s' % container.id)
-        return res
-
-    def _desc(self, container):
-        return '%s (%s)' % (container.name, container.id[:10])
 
     #
     # Support container renames, newer Docker API versions.

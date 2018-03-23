@@ -30,6 +30,11 @@ def dump(n):
 
 class NodeTest(unittest.TestCase):
 
+    def test_todict(self):
+        n = Node()
+        n.put(HOST1, ADDR1, TAG1)
+        self.assertIsNotNone(n.to_dict())
+
     def test_tagging(self):
         n = Node()
         n.put(HOST1, ADDR1, TAG1)

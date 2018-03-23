@@ -7,7 +7,7 @@ standard_library.install_aliases()
 # core
 import unittest, sys, mock
 
-from dnsrest.logger import Logger
+from dnsrest.logger import Logger, init_logger, log
 
 PROCESS_NAME = "mytestproc"
 
@@ -19,6 +19,17 @@ class LoggerTest(unittest.TestCase):
         self.assertEquals(log._process, sys.argv[0])
         self.assertFalse(log._quiet)
         self.assertFalse(log._verbose)
+
+    def test_init_logger(self):
+        self.assertEquals(log._process, sys.argv[0])
+        self.assertFalse(log._quiet)
+        self.assertFalse(log._verbose)
+
+        init_logger("test", True, True)
+
+        self.assertEquals(log._process, "test")
+        self.assertTrue(log._quiet)
+        self.assertTrue(log._verbose)
 
     def test_set_process_name(self):
         log = Logger()
@@ -51,6 +62,15 @@ class LoggerTest(unittest.TestCase):
         log.set_verbose(False)
         self.assertFalse(log._quiet)
         self.assertFalse(log._verbose)
+
+    @mock.patch('sys.stderr.write')
+    def test_error(self, mocker):
+        log = Logger()
+
+        log.set_quiet(True)
+        log.set_verbose(False)
+        log.error("test")
+        sys.stderr.write.assert_called_once()
 
     @mock.patch('sys.stderr.write')
     def test_info(self, mocker):
