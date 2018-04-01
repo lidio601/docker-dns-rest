@@ -16,9 +16,9 @@ import re
 
 # local
 from dnsrest.logger import log
+from dnsrest.registry import PREFIX_NAME
 
 RE_VALIDNAME = re.compile('[^\w\d.-]')
-
 
 Container = namedtuple('Container', 'id, name, running, addrs')
 
@@ -29,15 +29,14 @@ def get(d, *keys):
 
 
 class DockerMonitor(object):
-
-    '''
+    """
     Reads events from Docker and activates/deactivates container domain names
-    '''
+    """
 
-    def __init__(self, client, registry, domain):
-        self._docker   = client
+    def __init__(self, client, registry, domain=None):
+        self._docker = client
         self._registry = registry
-        self._domain   = domain.lstrip('.')
+        self._domain = domain.lstrip('.') if domain else None
 
     def run(self):
         # start the event poller, but don't read from the stream yet
@@ -48,29 +47,32 @@ class DockerMonitor(object):
             # If a container has been started by docker-compose, it is registered
             # under <service>.<project>.<domain>, as well as under <name>.<domain>.
             for rec in self._inspect(container['Id'], container):
+                self._registry.add(PREFIX_NAME + rec.name, [DNSLabel(rec.name)])
                 if rec.running:
-                    self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
                     self._registry.activate(rec)
 
         # read the docker event stream and update the name table
         for raw in events:
-            evt = json.loads(raw)
+            try:
+                evt = json.loads(raw)
+            except Exception as err:
+                log.error('Error while decoding Docker event: %s due %s', raw, err)
 
             # Looks like in Docker 1.10 we can get events of type "Network"
             # that I am assuming are a result of the new network features added in this release.
             # These network events cause dockerdn to crash. Let's just ignore them.
             if evt.get('Type', 'container') != 'container':
-                log.debug("Skipped event:", evt)
+                log.debug("Skipped event due wrong type: [type=%s] %s", evt.get('Type'), evt)
                 continue
 
             cid = evt.get('id')
             if cid is None:
-                log.debug("Skipped event:", evt)
+                log.debug("Skipped event due missing id: [type=%s] %s", evt.get('Type'), evt)
                 continue
 
             status = evt.get('status')
             if status not in ('start', 'die', 'rename'):
-                log.debug("Skipped event:", evt)
+                log.debug("Skipped event due wrong status: [status=%s] %s", evt.get('status'), evt)
                 continue
 
             try:
@@ -82,8 +84,6 @@ class DockerMonitor(object):
                     elif status == 'rename':
                         old_name = get(evt, 'Actor', 'Attributes', 'oldName')
                         new_name = get(evt, 'Actor', 'Attributes', 'name')
-#                        old_name = '.'.join((old_name, self._domain))
-#                        new_name = '.'.join((new_name, self._domain))
                         self._registry.rename(old_name, new_name)
 
                     else:
@@ -100,10 +100,12 @@ class DockerMonitor(object):
         project = labels.get('com.docker.compose.project')
 
         if all((instance, service, project)):
+            # If a container has been started by docker-compose, it is registered
+            # under <service>.<project>.<domain>, as well as under <name>.<domain>.
             names.append('%d.%s.%s' % (instance, service, project))
 
-            # the first instance of a service is available without number
-            # prefix
+            # the first instance of a service is available
+            # without a number prefix
             if instance == 1:
                 names.append('%s.%s' % (service, project))
 

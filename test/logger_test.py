@@ -7,7 +7,7 @@ standard_library.install_aliases()
 # core
 import unittest, sys, mock
 
-from dnsrest.logger import Logger, init_logger, log
+from dnsrest.logger import Logger, init_logger
 
 PROCESS_NAME = "mytestproc"
 
@@ -21,11 +21,13 @@ class LoggerTest(unittest.TestCase):
         self.assertFalse(log._verbose)
 
     def test_init_logger(self):
+        log = Logger()
+
         self.assertEquals(log._process, sys.argv[0])
         self.assertFalse(log._quiet)
         self.assertFalse(log._verbose)
 
-        init_logger("test", True, True)
+        init_logger("test", True, True, log)
 
         self.assertEquals(log._process, "test")
         self.assertTrue(log._quiet)

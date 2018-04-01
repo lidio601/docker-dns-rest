@@ -109,6 +109,7 @@ def main():
 
     api.start()
     dns.start()
+
     for signum in (signal.SIGTERM, signal.SIGINT):
         gevent.signal(signum, stop, api, dns)
 

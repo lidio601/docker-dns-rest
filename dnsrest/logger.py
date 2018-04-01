@@ -46,17 +46,17 @@ class Logger(object):
         sys.stderr.flush()
 
 
-def init_logger(process=None, quiet=True, verbose=True):
+# global instance
+log = Logger()
+
+
+def init_logger(process=None, quiet=True, verbose=True, logger=log):
     """
     Setup global instance
     """
     if process:
-        log.set_process_name(process)
+        logger.set_process_name(process)
     if quiet:
-        log.set_quiet(quiet)
+        logger.set_quiet(quiet)
     if verbose:
-        log.set_verbose(verbose)
-
-
-# global instance
-log = Logger()
+        logger.set_verbose(verbose)

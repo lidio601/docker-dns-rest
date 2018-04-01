@@ -14,10 +14,15 @@ import json
 
 # libs
 from gevent import threading
+from dnslib import DNSLabel
 
 # local
 from logger import log
 from nodez import Node
+
+PREFIX_NAME = 'name:/'
+PREFIX_ID = 'id:/'
+PREFIX_DOMAIN = 'domain:/'
 
 
 class Mapping(object):
@@ -33,6 +38,7 @@ class Mapping(object):
     def __init__(self, key, names):
         self.key = key
         self.names = [names] if not isinstance(names, list) else names
+        self.names = [DNSLabel(name) for name in self.names]
 
     def __str__(self):
         return "map %s => %s" % (self.key, self.names)
@@ -102,6 +108,20 @@ class Registry(object):
                         log.info('removed %s -> %s', name.idna(), addr)
 #        log.debug('tree %s', self.dump())
 
+    def _get_mapping_key(self, key=None, name=None, id=None):
+        if name:
+            key = '%s%s' % (PREFIX_NAME, name)
+        elif id:
+            key = '%s%s' % (PREFIX_ID, id)
+
+        if key and key.startswith(PREFIX_NAME):
+            key = key.lstrip('/')
+
+            if self._domain:
+                key = '.'.join((key, self._domain))
+
+        return key
+
     def _get_mapping_by_container(self, container):
         """
         try name and id-based keys
@@ -110,20 +130,20 @@ class Registry(object):
         """
 
         # try matching by name
-        res = self._mappings.get('name:/%s' % container.name)
+        res = self._mappings.get(self._get_mapping_key(name=container.name))
 
         if not res:
             # try matching by id
-            res = self._mappings.get('id:/%s' % container.id)
+            res = self._mappings.get(self._get_mapping_key(id=container.id))
 
         return res
 
     def remove(self, key):
         with self._lock:
-            old_mapping = self._mappings.get(key)
+            old_mapping = self._mappings.get(self._get_mapping_key(key))
 
             if old_mapping:
-                log.info('table.remove %s' % old_mapping)
+                log.info('table.remove %s', old_mapping)
                 self._deactivate(old_mapping.names, tag=old_mapping.key)
                 self._mappings.pop(old_mapping.key)
 
@@ -138,8 +158,9 @@ class Registry(object):
         self.remove(key)
 
         with self._lock:
+
             # persist the mappings
-            self._mappings[key] = Mapping(key, names)
+            self._mappings[self._get_mapping_key(key)] = Mapping(key, names)
 
             # check if these pertain to any already-active
             # containers and activate the domain names
@@ -147,18 +168,18 @@ class Registry(object):
                 """
                 :var Container container
                 """
-                if key in ('name:/' + container.name, 'id:/' + container.id):
+                if key in (self._get_mapping_key(name=container.name), self._get_mapping_key(id=container.id)):
                     for addr in container.addrs:
                         self._activate(names, addr, tag=key)
 
     def get(self, key):
         with self._lock:
-            mapping = self._mappings.get(key)
+            mapping = self._mappings.get(self._get_mapping_key(key))
 
             if not mapping:
-                log.debug('table.get %s with NoneType' % key)
+                log.debug('table.get %s with NoneType', key)
             else:
-                log.info('table.get %s with %s' % (mapping, ", ".join(addr for addr in mapping)))
+                log.info('table.get %s with %s', (key, [addr.idna() for addr in mapping.names]))
 
             if mapping:
                 return [n.idna().rstrip('.') for n in mapping.names]
@@ -166,14 +187,30 @@ class Registry(object):
             return []
 
     def activate_static(self, domain, addr):
+        """
+        :param domain: DNSLabel
+        :param addr: string
+        """
+
+        if not (domain is DNSLabel):
+            domain = DNSLabel(domain)
+
         with self._lock:
-            log.info('table.activate %s with %s' % (domain, addr))
-            self._activate([domain], addr, tag='domain:/%s' % domain)
+            log.info('table.activate %s with %s', (domain.idna(), addr))
+            self._activate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def deactivate_static(self, domain, addr):
+        """
+        :param domain: DNSLabel
+        :param addr: string
+        """
+
+        if not (domain is DNSLabel):
+            domain = DNSLabel(domain)
+
         with self._lock:
-            log.info('table.deactivate %s with %s' % (domain, addr))
-            self._deactivate([domain], addr, tag='domain:/%s' % domain)
+            log.info('table.deactivate %s with %s', (domain.idna(), addr))
+            self._deactivate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def activate(self, container):
         """
@@ -186,7 +223,7 @@ class Registry(object):
 
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as active' % container)
+                log.info('setting %s as active', container)
 
                 key, names = mapping.key, mapping.names
                 for addr in container.addrs:
@@ -211,7 +248,7 @@ class Registry(object):
             # are being deactivated
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as inactive' % container)
+                log.info('setting %s as inactive', container)
                 self._deactivate(mapping.names, tag=mapping.key)
 
     def resolve(self, name):
@@ -224,25 +261,21 @@ class Registry(object):
             res = self._domains.get(name)
             if res:
                 addrs = [a for a, _ in res]
-                log.debug('resolved %s -> %s' % (name, ', '.join(addrs)))
+                log.debug('resolved %s -> %s', (name, ', '.join(addrs)))
                 return addrs
             else:
-                log.debug('no mapping for %s' % name)
+                log.debug('no mapping for %s', name)
 
     #
     # Support container renames, newer Docker API versions.
     #
+
     def rename(self, old_name, new_name):
         if not old_name or not new_name:
             return
 
-        old_name = old_name.lstrip('/')
-
-        old_name = '.'.join((old_name, self._domain))
-        new_name = '.'.join((new_name, self._domain))
-
-        old_key = 'name:/%s' % old_name
-        new_key = 'name:/%s' % new_name
+        old_key = self._get_mapping_key(name=old_name)
+        new_key = self._get_mapping_key(name=new_name)
 
         with self._lock:
             mapping = self._mappings.pop(old_key)
@@ -250,4 +283,4 @@ class Registry(object):
             if mapping:
                 mapping.key = new_key
                 self._mappings[new_key] = mapping
-                log('renamed (%s -> %s) == %s', old_name, new_name, mapping)
+                log.info('renamed (%s -> %s) == %s', old_name, new_name, mapping)

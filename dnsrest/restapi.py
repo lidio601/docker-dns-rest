@@ -10,8 +10,8 @@ from builtins import object
 
 # core
 import json
-
 import falcon
+
 # libs
 from dnslib import A, DNSLabel
 
@@ -34,19 +34,18 @@ class BaseApi(object):
     def _parse(self, req):
         try:
             return json.loads(req.stream.read())
-        except Exception, ex:
+        except Exception as ex:
             raise falcon.HTTPError(falcon.HTTP_400, 'Error', ex.message)
 
     def _validate_type(self, key, val, *types):
         if not isinstance(val, types):
-            self._fail('The %s must be of type %r, not %r' % \
-                       (key, types, type(val)))
+            self._fail('The %s must be of type %r, not %r' % (key, types, type(val)))
 
     def _validate_domain(self, domain):
         self._validate_type('domain name', domain, (str, unicode))
         try:
             return DNSLabel(domain)
-        except Exception, e:
+        except Exception as e:
             self._fail('Domain name parsing failed %s' % e)
 
     def _validate_ips(self, ips):
@@ -60,7 +59,9 @@ class BaseApi(object):
 
 
 class StaticApi(BaseApi):
-    'Expose an API to create and manage static domain to ip mappings'
+    """
+    Expose an API to create and manage static domain to ip mappings
+    """
 
     def __init__(self, registry):
         BaseApi.__init__(self, registry)
@@ -72,14 +73,13 @@ class StaticApi(BaseApi):
         data = self._parse(req)
         domain, ips = self._validate(domain, data)
         for ip in ips:
-            self.registry.activate_static(domain, ip)
+            self.registry.activate_static(DNSLabel(domain), ip)
         self._ok(res, {'code': 0})
 
     def on_delete(self, req, res, domain):
         data = self._parse(req)
         domain, ips = self._validate(domain, data)
-        print ('ips ', ips)
-        self.registry.deactivate_static(domain, ips)
+        self.registry.deactivate_static(DNSLabel(domain), ips)
         self._ok(res, {'code': 0})
 
     def _validate(self, domain, data):
@@ -92,7 +92,9 @@ class StaticApi(BaseApi):
 
 
 class ContainerApi(BaseApi):
-    'Expose an API to create and manage container name/id domain mappings'
+    """
+    Expose an API to create and manage container name/id domain mappings
+    """
 
     VALID = set(['id', 'name'])
 
@@ -122,7 +124,11 @@ class ContainerApi(BaseApi):
         return label + ':/' + arg
 
     def _validate(self, data):
-        'Ensure that the data being PUT is valid'
+        """
+        Ensure that the data being PUT is valid
+        :param data:
+        :return:
+        """
         if not isinstance(data, dict):
             self._fail('Expected a dict, not %r' % type(data))
         domains = data.get('domains')
