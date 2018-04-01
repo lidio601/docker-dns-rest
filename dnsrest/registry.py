@@ -179,7 +179,7 @@ class Registry(object):
             if not mapping:
                 log.debug('table.get %s with NoneType', key)
             else:
-                log.info('table.get %s with %s', (key, [addr.idna() for addr in mapping.names]))
+                log.info('table.get %s with %s', key, [addr.idna() for addr in mapping.names])
 
             if mapping:
                 return [n.idna().rstrip('.') for n in mapping.names]
@@ -196,7 +196,7 @@ class Registry(object):
             domain = DNSLabel(domain)
 
         with self._lock:
-            log.info('table.activate %s with %s', (domain.idna(), addr))
+            log.info('table.activate %s with %s', domain.idna(), addr)
             self._activate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def deactivate_static(self, domain, addr):
@@ -209,7 +209,7 @@ class Registry(object):
             domain = DNSLabel(domain)
 
         with self._lock:
-            log.info('table.deactivate %s with %s', (domain.idna(), addr))
+            log.info('table.deactivate %s with %s', domain.idna(), addr)
             self._deactivate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def activate(self, container):
@@ -261,7 +261,7 @@ class Registry(object):
             res = self._domains.get(name)
             if res:
                 addrs = [a for a, _ in res]
-                log.debug('resolved %s -> %s', (name, ', '.join(addrs)))
+                log.debug('resolved %s -> %s', name, ', '.join(addrs))
                 return addrs
             else:
                 log.debug('no mapping for %s', name)

@@ -76,16 +76,16 @@ class RegistryTest(unittest.TestCase):
         for domainName in TEST_NAMES:
             self.assertIsNone(reg._domains.get(domainName))
 
-        log.info("Adding %s" % TEST_ADDR)
+        log.info("Adding %s", TEST_ADDR)
         reg._activate(TEST_NAMES2, TEST_ADDR, TEST_KEY)
         for domainName in TEST_NAMES:
             self.assertIsNotNone(reg._domains.get(domainName))
 
-        log.info("Removing %s" % TEST_ADDR)
+        log.info("Removing %s", TEST_ADDR)
         reg._deactivate(TEST_NAMES2, TEST_ADDR, TEST_KEY)
         log.debug(reg.dump())
         for domainName in TEST_NAMES:
-            log.debug("name %s" % domainName)
+            log.debug("name %s", domainName)
             self.assertIsNone(reg._domains.get(domainName))
 
     def test_registry_mappings(self):
@@ -96,11 +96,11 @@ class RegistryTest(unittest.TestCase):
 
         reg = Registry()
 
-        log.info("Adding mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Adding mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.add(PREFIX_NAME + TEST_KEY, TEST_NAMES)
         self.assertIsNotNone(reg._mappings.get(PREFIX_NAME + TEST_KEY))
 
-        log.info("Removing mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Removing mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.remove(PREFIX_NAME + TEST_KEY)
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY))
 
@@ -113,11 +113,11 @@ class RegistryTest(unittest.TestCase):
 
         reg = Registry()
 
-        log.info("Removing mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Removing mapping %s => %s", TEST_KEY, TEST_NAMES)
         names = reg.get(PREFIX_NAME + TEST_KEY)
         self.assertEqual([], names)
 
-        log.info("Adding mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Adding mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.add(PREFIX_NAME + TEST_KEY, TEST_NAMES)
         names = reg.get(PREFIX_NAME + TEST_KEY)
         self.assertEqual(TEST_NAMES, names)
@@ -134,11 +134,11 @@ class RegistryTest(unittest.TestCase):
         for domainName in TEST_NAMES:
             self.assertIsNone(reg._domains.get(domainName))
 
-        log.info("Adding static %s" % TEST_ADDR)
+        log.info("Adding static %s", TEST_ADDR)
         reg.activate_static(TEST_NAMES2[0], TEST_ADDR)
         self.assertIsNotNone(reg._domains.get(TEST_NAMES[0]))
 
-        log.info("Removing static %s" % TEST_ADDR)
+        log.info("Removing static %s", TEST_ADDR)
         reg.deactivate_static(TEST_NAMES2[0], TEST_ADDR)
         log.debug(reg.dump())
         self.assertIsNone(reg._domains.get(TEST_NAMES[0]))
@@ -160,11 +160,11 @@ class RegistryTest(unittest.TestCase):
 
         self.assertIsNone(reg._active.get(container.id))
 
-        log.info("Activating container %s" % container.name)
+        log.info("Activating container %s", container.name)
         reg.activate(container)
         self.assertIsNotNone(reg._active.get(container.id))
 
-        log.info("Deactivating container %s" % container.name)
+        log.info("Deactivating container %s", container.name)
         reg.deactivate(container)
         self.assertIsNone(reg._active.get(container.id))
 
@@ -175,12 +175,12 @@ class RegistryTest(unittest.TestCase):
 
         reg = Registry()
 
-        log.info("Adding %s" % TEST_ADDR)
+        log.info("Adding %s", TEST_ADDR)
         reg._activate(TEST_NAMES2, TEST_ADDR, TEST_KEY)
 
         for name in TEST_NAMES:
             addrs = reg.resolve(name)
-            log.debug('resolve %s result %s' % (name, addrs))
+            log.debug('resolve %s result %s', name, addrs)
             self.assertIsNotNone(addrs)
             self.assertEqual(addrs, [TEST_ADDR])
 
@@ -198,13 +198,13 @@ class RegistryTest(unittest.TestCase):
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY))
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2))
 
-        log.info("Adding mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Adding mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.add(PREFIX_NAME + TEST_KEY, TEST_NAMES)
 #        log.debug('_mapping %s' % reg._mappings)
         self.assertIsNotNone(reg._mappings.get(PREFIX_NAME + TEST_KEY))
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2))
 
-        log.info("Removing mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Removing mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.rename(TEST_KEY, TEST_KEY2)
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY))
         self.assertIsNotNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2))
@@ -219,13 +219,13 @@ class RegistryTest(unittest.TestCase):
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY + "." + TEST_DOMAIN))
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2 + "." + TEST_DOMAIN))
 
-        log.info("Adding mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Adding mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.add(PREFIX_NAME + TEST_KEY, TEST_NAMES)
         log.debug('_mapping %s' % reg._mappings)
         self.assertIsNotNone(reg._mappings.get(PREFIX_NAME + TEST_KEY + "." + TEST_DOMAIN))
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2 + "." + TEST_DOMAIN))
 
-        log.info("Removing mapping %s => %s" % (TEST_KEY, TEST_NAMES))
+        log.info("Removing mapping %s => %s", TEST_KEY, TEST_NAMES)
         reg.rename(TEST_KEY, TEST_KEY2)
         self.assertIsNone(reg._mappings.get(PREFIX_NAME + TEST_KEY + "." + TEST_DOMAIN))
         self.assertIsNotNone(reg._mappings.get(PREFIX_NAME + TEST_KEY2 + "." + TEST_DOMAIN))
