@@ -48,9 +48,11 @@ class DnsServer(DatagramServer):
                 if rec.q.qtype == QTYPE.AAAA:
                     addrs = None
             else:
-                addrs.add(self._resolve('.'.join(rec.q.qname.label)))
+                addr = self._resolve('.'.join(rec.q.qname.label))
+                if addr:
+                    addrs.add(addr)
 
-        self.socket.sendto(self._reply(rec, auth, addrs), peer)
+        self.socket.sendto(self._reply(rec, auth, list(addrs)), peer)
 
     def _reply(self, rec, auth, addrs=None):
         reply = DNSRecord(DNSHeader(id=rec.header.id, qr=1, aa=auth, ra=bool(self._resolver)), q=rec.q)
