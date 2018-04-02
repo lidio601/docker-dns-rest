@@ -17,8 +17,9 @@ from dnsrest.logger import log
 from dnsrest.registry import PREFIX_NAME
 
 RE_VALIDNAME = re.compile('[^\w\d.-]')
+RE_ENVVAR = re.compile('(.*)=(.*)')
 
-Container = namedtuple('Container', 'id, name, running, addrs')
+Container = namedtuple('Container', 'id, name, running, addrs, names')
 
 
 def get(d, *keys):
@@ -79,7 +80,8 @@ class DockerMonitor(object):
                 dnsrecords = []
 
             for rec in dnsrecords:
-                self._registry.add(self._registry.get_mapping_key(name=rec.name), [DNSLabel(rec.name)])
+                log.debug("adding dns record for record %s", rec)
+                self._registry.add(self._registry.get_mapping_key(name=rec.name), rec.names)
 
                 if rec.running:
                     log.debug("activating dns record for record %s", rec)
@@ -165,10 +167,30 @@ class DockerMonitor(object):
             if instance == 1:
                 names.append('%s.%s' % (service, project))
 
-        return ['.'.join((name, self._domain)) for name in names]
+        if self._domain:
+            names = ['.'.join((name, self._domain)) for name in names]
+
+        return names
 
     def _inspect(self, rec, data=None):
         id = get(rec, 'Id')
+
+        envs = get(rec, 'Config', 'Env')
+
+        # Support nginx-proxy VIRTUAL_HOST
+        # environment variable to automatically
+        # configure domains
+        # VIRTUAL_HOST=foo.bar.com
+        # VIRTUAL_HOST=*.bar.com
+        virtualhosts = []
+        try:
+            for line in envs:
+                match = RE_ENVVAR.match(line)
+                if match and match.groups()[0] == "VIRTUAL_HOST":
+                    virtualhosts = match.groups()[1].split(",")
+                    break
+        except Exception as e:
+            log.error("Error while evaluating VIRTUAL_HOST env var due to %s", e)
 
         labels = get(rec, 'Config', 'Labels')
 
@@ -181,7 +203,8 @@ class DockerMonitor(object):
 #        name = RE_VALIDNAME.sub('', name).rstrip('.')
 
         # commented since phensley/docker-dns/commit/1ee3a2525f58881c52ed50e849ab5b7e43f56ec3
-        name = '.'.join((name, self._domain))
+        if self._domain:
+            name = '.'.join((name, self._domain))
 
         ipaddress = None
 
@@ -206,5 +229,9 @@ class DockerMonitor(object):
 
         # TODO: what if we have a container connected in multiple networks?
 
+        names = [DNSLabel(name)]
+        if virtualhosts:
+            names += [DNSLabel(hostname) for hostname in virtualhosts]
+
         # 'id, name, running, addr'
-        return [Container(id, name, state, ipaddress) for name in self._get_names(name, labels)]
+        return [Container(id, name, state, ipaddress, names) for name in self._get_names(name, labels)]

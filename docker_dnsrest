@@ -71,7 +71,7 @@ def parse_args():
                         help='Bind address for DNS server')
     parser.add_argument('--rest-bind', default=dns_rest_addr,
                         help='Bind address for REST API server')
-    parser.add_argument('--domain', default='docker',
+    parser.add_argument('--domain', default=None,
                         help='Base domain name for registered services')
     parser.add_argument('--resolver', default=dns_resolver, nargs='*',
                         help='Servers for recursive DNS resolution')
