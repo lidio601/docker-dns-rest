@@ -108,7 +108,7 @@ class Registry(object):
                         log.info('removed %s -> %s', name.idna(), addr)
 #        log.debug('tree %s', self.dump())
 
-    def _get_mapping_key(self, key=None, name=None, id=None):
+    def get_mapping_key(self, key=None, name=None, id=None):
         if name:
             key = '%s%s' % (PREFIX_NAME, name)
         elif id:
@@ -130,17 +130,17 @@ class Registry(object):
         """
 
         # try matching by name
-        res = self._mappings.get(self._get_mapping_key(name=container.name))
+        res = self._mappings.get(self.get_mapping_key(name=container.name))
 
         if not res:
             # try matching by id
-            res = self._mappings.get(self._get_mapping_key(id=container.id))
+            res = self._mappings.get(self.get_mapping_key(id=container.id))
 
         return res
 
     def remove(self, key):
         with self._lock:
-            old_mapping = self._mappings.get(self._get_mapping_key(key))
+            old_mapping = self._mappings.get(self.get_mapping_key(key))
 
             if old_mapping:
                 log.info('table.remove %s', old_mapping)
@@ -160,7 +160,7 @@ class Registry(object):
         with self._lock:
 
             # persist the mappings
-            self._mappings[self._get_mapping_key(key)] = Mapping(key, names)
+            self._mappings[self.get_mapping_key(key)] = Mapping(key, names)
 
             # check if these pertain to any already-active
             # containers and activate the domain names
@@ -168,13 +168,13 @@ class Registry(object):
                 """
                 :var Container container
                 """
-                if key in (self._get_mapping_key(name=container.name), self._get_mapping_key(id=container.id)):
+                if key in (self.get_mapping_key(name=container.name), self.get_mapping_key(id=container.id)):
                     for addr in container.addrs:
                         self._activate(names, addr, tag=key)
 
     def get(self, key):
         with self._lock:
-            mapping = self._mappings.get(self._get_mapping_key(key))
+            mapping = self._mappings.get(self.get_mapping_key(key))
 
             if not mapping:
                 log.debug('table.get %s with NoneType', key)
@@ -274,8 +274,8 @@ class Registry(object):
         if not old_name or not new_name:
             return
 
-        old_key = self._get_mapping_key(name=old_name)
-        new_key = self._get_mapping_key(name=new_name)
+        old_key = self.get_mapping_key(name=old_name)
+        new_key = self.get_mapping_key(name=new_name)
 
         with self._lock:
             mapping = self._mappings.pop(old_key)

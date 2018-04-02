@@ -4,8 +4,6 @@ from __future__ import print_function
 from future import standard_library
 from functools import reduce
 standard_library.install_aliases()
-from builtins import map
-from builtins import str
 from builtins import object
 
 # core
@@ -38,19 +36,62 @@ class DockerMonitor(object):
         self._registry = registry
         self._domain = domain.lstrip('.') if domain else None
 
+    def bootstrap(self):
+        """
+        At startup
+        """
+        containers = self._docker.containers()
+        containers = list(containers)
+        log.debug("[%d] containers found", len(containers))
+
+        self._inspect_containers(containers)
+
     def run(self):
+        """
+        When new events are triggered within Docker
+        we read those and update the registry
+        """
         # start the event poller, but don't read from the stream yet
         events = self._docker.events()
+        #events = list(events)
+        #log.debug("[%d] events found", len(events))
 
+        self._inspect_events(events)
+
+    def _inspect_containers(self, containers):
+        """
+        inspect a list of containers
+        and add the relative DNS records
+        :param containers: list
+        :return:
+        """
         # bootstrap by activating all running containers
-        for container in self._docker.containers():
+        for container in containers:
             # If a container has been started by docker-compose, it is registered
             # under <service>.<project>.<domain>, as well as under <name>.<domain>.
-            for rec in self._inspect(container['Id'], container):
-                self._registry.add(PREFIX_NAME + rec.name, [DNSLabel(rec.name)])
-                if rec.running:
-                    self._registry.activate(rec)
+            # get full details on this container from docker
+            record = self._docker.inspect_container(container['Id'])
 
+            try:
+                dnsrecords = self._inspect(record, container)
+            except Exception as e:
+                log.error('Error: %s', e)
+                dnsrecords = []
+
+            for rec in dnsrecords:
+                self._registry.add(self._registry.get_mapping_key(name=rec.name), [DNSLabel(rec.name)])
+
+                if rec.running:
+                    log.debug("activating dns record for record %s", rec)
+                    self._registry.activate(rec)
+                else:
+                    log.debug("adding dns record for record %s", rec)
+
+    def _inspect_events(self, events):
+        """
+        When new events come from Docker
+        :return:
+        """
         # read the docker event stream and update the name table
         for raw in events:
             try:
@@ -61,7 +102,8 @@ class DockerMonitor(object):
             # Looks like in Docker 1.10 we can get events of type "Network"
             # that I am assuming are a result of the new network features added in this release.
             # These network events cause dockerdn to crash. Let's just ignore them.
-            if evt.get('Type', 'container') != 'container':
+            etype = evt.get('Type', 'container')
+            if etype != 'container':
                 log.debug("Skipped event due wrong type: [type=%s] %s", evt.get('Type'), evt)
                 continue
 
@@ -75,23 +117,37 @@ class DockerMonitor(object):
                 log.debug("Skipped event due wrong status: [status=%s] %s", evt.get('status'), evt)
                 continue
 
+            log.info("got Docker event [type=%s] [status=%s] [cid=%s]", etype, status, cid)
+
+            # get full details on this container from docker
+            record = self._docker.inspect_container(cid)
+
             try:
-                for rec in self._inspect(cid):
-                    if status == 'start':
-                        self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
-                        self._registry.activate(rec)
-
-                    elif status == 'rename':
-                        old_name = get(evt, 'Actor', 'Attributes', 'oldName')
-                        new_name = get(evt, 'Actor', 'Attributes', 'name')
-                        self._registry.rename(old_name, new_name)
-
-                    else:
-                        self._registry.deactivate(rec)
+                dnsrecords = self._inspect(record)
             except Exception as e:
                 log.error('Error: %s', e)
+                dnsrecords = []
+
+            for rec in dnsrecords:
+                if status == 'start':
+                    self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
+                    self._registry.activate(rec)
+
+                elif status == 'rename':
+                    old_name = get(evt, 'Actor', 'Attributes', 'oldName')
+                    new_name = get(evt, 'Actor', 'Attributes', 'name')
+                    self._registry.rename(old_name, new_name)
+
+                else:
+                    self._registry.deactivate(rec)
 
     def _get_names(self, name, labels):
+        """
+        Inspect the container
+        :param name:
+        :param labels:
+        :return:
+        """
         names = [RE_VALIDNAME.sub('', name).rstrip('.')]
 
         labels = labels or {}
@@ -111,10 +167,7 @@ class DockerMonitor(object):
 
         return ['.'.join((name, self._domain)) for name in names]
 
-    def _inspect(self, cid, data=None):
-        # get full details on this container from docker
-        rec = self._docker.inspect_container(cid)
-
+    def _inspect(self, rec, data=None):
         id = get(rec, 'Id')
 
         labels = get(rec, 'Config', 'Labels')

@@ -115,6 +115,7 @@ def main():
 
     client = docker.Client(args.docker, version=DOCKER_VERSION)
     monitor = DockerMonitor(client, registry, args.domain)
+    monitor.bootstrap()
     gevent.wait([gevent.spawn(monitor.run)])
 
 
