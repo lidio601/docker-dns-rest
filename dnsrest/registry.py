@@ -41,7 +41,7 @@ class Mapping(object):
         self.names = [DNSLabel(name) for name in self.names]
 
     def __str__(self):
-        return "map %s => %s" % (self.key, self.names)
+        return "%s -> %s" % (self.key, self.names)
 
 
 class Container(object):
@@ -90,22 +90,18 @@ class Registry(object):
 
         for name in names:
             for addr in addrs:
-                log.info('added %s -> %s key=%s', name.idna(), addr, tag)
+                log.info('[registry] activate DNS record \n\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s key=%s', name.idna(), addr, tag)
                 self._domains.put(name, addr, tag)
 #        log.debug('tree %s' % self.dump())
 
     def _deactivate(self, names, addr=None, tag=None):
         # ensure that is a list of addr
-        addrs = [addr] if not isinstance(addr, list) else addr
+        addrs = [addr] if not isinstance(addr, list) and addr is not None else addr
 
         for name in names:
             if self._domains.get(name):
                 addrs = self._domains.remove(name, tag, addrs)
-                log.info('removing domains %s -> %s key = %s', name.idna(), addrs, tag)
-
-                if addrs:
-                    for addr in addrs:
-                        log.info('removed %s -> %s', name.idna(), addr)
+                log.info('[registry] deactivate DNS record \n\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s key = %s', name.idna(), addrs, tag)
 #        log.debug('tree %s', self.dump())
 
     def get_mapping_key(self, key=None, name=None, id=None):
@@ -143,7 +139,7 @@ class Registry(object):
             old_mapping = self._mappings.get(self.get_mapping_key(key))
 
             if old_mapping:
-                log.info('table.remove %s', old_mapping)
+                log.debug('[registry] table.remove map \n\t\t\t\t\t\t\t\t\t\t\t\t\t- %s', old_mapping)
                 self._deactivate(old_mapping.names, tag=old_mapping.key)
                 self._mappings.pop(old_mapping.key)
 
@@ -159,12 +155,15 @@ class Registry(object):
 
         with self._lock:
 
-            # persist the mappings
-            self._mappings[self.get_mapping_key(key)] = Mapping(key, names)
+            new_mapping = Mapping(key, names)
 
-            # check if these pertain to any already-active
-            # containers and activate the domain names
-            for container in list(self._active.items()):
+            # persist the mappings
+            log.debug('[registry] table.add map \n\t\t\t\t\t\t\t\t\t\t\t\t\t- %s', new_mapping)
+            self._mappings[self.get_mapping_key(key)] = new_mapping
+
+            # check if these pertain to any already active
+            # container and activate the domain names
+            for container in list(self._active.values()):
                 """
                 :var Container container
                 """
@@ -177,9 +176,9 @@ class Registry(object):
             mapping = self._mappings.get(self.get_mapping_key(key))
 
             if not mapping:
-                log.debug('table.get %s with NoneType', key)
+                log.debug('[registry] table.get %s with NoneType', key)
             else:
-                log.info('table.get %s with %s', key, [addr.idna() for addr in mapping.names])
+                log.debug('[registry] table.get %s with %s', key, [addr.idna() for addr in mapping.names])
 
             if mapping:
                 return [n.idna().rstrip('.') for n in mapping.names]
@@ -196,7 +195,7 @@ class Registry(object):
             domain = DNSLabel(domain)
 
         with self._lock:
-            log.info('table.activate %s with %s', domain.idna(), addr)
+            log.debug('[registry] table.activate %s with %s', domain.idna(), addr)
             self._activate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def deactivate_static(self, domain, addr):
@@ -209,7 +208,7 @@ class Registry(object):
             domain = DNSLabel(domain)
 
         with self._lock:
-            log.info('table.deactivate %s with %s', domain.idna(), addr)
+            log.debug('[registry] table.deactivate %s with %s', domain.idna(), addr)
             self._deactivate([domain], addr, tag='%s%s' % (PREFIX_DOMAIN, domain))
 
     def activate(self, container):
@@ -223,7 +222,8 @@ class Registry(object):
 
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as active', container)
+                log.debug('[registry] activating map for container %s \n%s', container, '\n'.join(
+                    ["\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s" % (r.idna(), container.name) for r in mapping.names]))
 
                 key, names = mapping.key, mapping.names
                 for addr in container.addrs:
@@ -238,9 +238,7 @@ class Registry(object):
         with self._lock:
             old_container = self._active.get(container.id)
 
-            if old_container is None:
-                return
-            else:
+            if old_container is not None:
                 del self._active[container.id]
 
             # since this container is active, get the old address
@@ -248,7 +246,8 @@ class Registry(object):
             # are being deactivated
             mapping = self._get_mapping_by_container(container)
             if mapping:
-                log.info('setting %s as inactive', container)
+                log.debug('[registry] deactivating map for container %s \n%s', container, '\n'.join(
+                    ["\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s" % (r.idna(), container.name) for r in mapping.names]))
                 self._deactivate(mapping.names, tag=mapping.key)
 
     def resolve(self, name):
@@ -261,10 +260,11 @@ class Registry(object):
             res = self._domains.get(name)
             if res:
                 addrs = [a for a, _ in res]
-                log.debug('resolved %s -> %s', name, ', '.join(addrs))
+                addrs = list(set(addrs))
+                log.debug('[registry] resolved %s -> %s', name, ', '.join(addrs))
                 return addrs
             else:
-                log.debug('no mapping for %s', name)
+                log.debug('[registry] no mapping for %s', name)
 
     #
     # Support container renames, newer Docker API versions.
@@ -278,9 +278,12 @@ class Registry(object):
         new_key = self.get_mapping_key(name=new_name)
 
         with self._lock:
-            mapping = self._mappings.pop(old_key)
-
-            if mapping:
-                mapping.key = new_key
-                self._mappings[new_key] = mapping
-                log.info('renamed (%s -> %s) == %s', old_name, new_name, mapping)
+            try:
+                mapping = self._mappings.pop(old_key)
+            except KeyError:
+                pass
+            else:
+                if mapping:
+                    mapping.key = new_key
+                    self._mappings[new_key] = mapping
+                    log.debug('[registry] renamed (%s -> %s) == %s', old_name, new_name, mapping)

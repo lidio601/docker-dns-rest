@@ -30,6 +30,7 @@ class DnsServer(DatagramServer):
         self._registry = registry
         self._resolver = None
         if dns_servers:
+            log.info("[namesrv] starting with failover resolver %s", dns_servers)
             self._resolver = Resolver(servers=dns_servers,
                                       timeout=DNS_RESOLVER_TIMEOUT, tries=1)
 
@@ -47,12 +48,18 @@ class DnsServer(DatagramServer):
                 # with an successful but empty result
                 if rec.q.qtype == QTYPE.AAAA:
                     addrs = None
+                else:
+                    log.debug("[namesrv] resolved %s to %s", rec.q.qname.idna(), addrs)
             else:
                 addr = self._resolve('.'.join(rec.q.qname.label))
                 if addr:
                     addrs.add(addr)
+                    log.debug("[namesrv] externally resolved %s to %s", rec.q.qname.idna(), addrs)
 
-        self.socket.sendto(self._reply(rec, auth, list(addrs)), peer)
+            if addrs:
+                addrs = list(addrs)
+
+        self.socket.sendto(self._reply(rec, auth, addrs), peer)
 
     def _reply(self, rec, auth, addrs=None):
         reply = DNSRecord(DNSHeader(id=rec.header.id, qr=1, aa=auth, ra=bool(self._resolver)), q=rec.q)
@@ -76,5 +83,4 @@ class DnsServer(DatagramServer):
             # socket.gaierror as e:
             if not contains(str(e), 'ETIMEOUT', 'ENOTFOUND'):
                 log.error("Exception in DnsServer._resolve", e)
-        finally:
             return None

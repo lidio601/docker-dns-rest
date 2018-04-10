@@ -30,18 +30,18 @@ class Logger(object):
 
     def info(self, msg, *args):
         if not self._quiet:
-            self._log(msg, *args)
+            self._log('info', msg, *args)
 
     def debug(self, msg, *args):
         if not self._quiet and self._verbose:
-            self._log(msg, *args)
+            self._log('debug', msg, *args)
 
     def error(self, msg, *args):
-        self._log(msg, *args)
+        self._log('error', msg, *args)
 
-    def _log(self, msg, *args):
+    def _log(self, level, msg, *args):
         now = datetime.now().isoformat()
-        line = u'%s [%s] %s\n' % (now, self._process, msg % args)
+        line = u'%s %s %s %s\n' % (now, self._process, level.upper().ljust(5, " "), msg % args)
         sys.stderr.write(line)
         sys.stderr.flush()
 

@@ -30,6 +30,7 @@ from dnsrest.namesrv import DnsServer
 from dnsrest.registry import Registry
 from dnsrest.restapi import StaticApi, ContainerApi, DebugApi
 
+
 # libs
 import docker
 import falcon
@@ -96,6 +97,7 @@ def main():
     check(args)
     init_logger(process=PROCESS, quiet=args.quiet, verbose=args.verbose)
     resolver = () if args.no_recursion else args.resolver
+    log.info("Starting with args %s", args)
 
     registry = Registry(args.domain)
 

@@ -91,7 +91,7 @@ class Node(object):
         part = label.pop()
         link = NodeLink(addr, tag)
 
-        if not label and part == '*':
+        if part == '*':
             self._wildcard = True
             self._addr.append(link)
             return

@@ -43,7 +43,7 @@ class DockerMonitor(object):
         """
         containers = self._docker.containers()
         containers = list(containers)
-        log.debug("[%d] containers found", len(containers))
+        log.info("[monitor] [%d] containers found", len(containers))
 
         self._inspect_containers(containers)
 
@@ -76,18 +76,20 @@ class DockerMonitor(object):
             try:
                 dnsrecords = self._inspect(record, container)
             except Exception as e:
-                log.error('Error: %s', e)
+                log.error('[monitor] error: %s', e)
                 dnsrecords = []
 
+            log.debug("[monitor] [%d] dnsrecords found for container %s", len(dnsrecords), record)
+
             for rec in dnsrecords:
-                log.debug("adding dns record for record %s", rec)
+                log.debug("[monitor] adding map due to record %s\n%s",
+                         rec, '\n'.join(["\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s" % (r.idna(), rec.name) for r in rec.names]))
                 self._registry.add(self._registry.get_mapping_key(name=rec.name), rec.names)
 
                 if rec.running:
-                    log.debug("activating dns record for record %s", rec)
+                    log.debug("[monitor] activating map due to record %s\n%s",
+                             rec, '\n'.join(["\t\t\t\t\t\t\t\t\t\t\t\t\t- %s -> %s" % (r.idna(), rec.name) for r in rec.names]))
                     self._registry.activate(rec)
-                else:
-                    log.debug("adding dns record for record %s", rec)
 
     def _inspect_events(self, events):
         """
@@ -99,27 +101,27 @@ class DockerMonitor(object):
             try:
                 evt = json.loads(raw)
             except Exception as err:
-                log.error('Error while decoding Docker event: %s due %s', raw, err)
+                log.error('[monitor] error while decoding Docker event: %s due %s', raw, err)
 
             # Looks like in Docker 1.10 we can get events of type "Network"
             # that I am assuming are a result of the new network features added in this release.
             # These network events cause dockerdn to crash. Let's just ignore them.
             etype = evt.get('Type', 'container')
             if etype != 'container':
-                log.debug("Skipped event due wrong type: [type=%s] %s", evt.get('Type'), evt)
+                log.debug("[monitor] skipped event due wrong type: [type=%s] %s", evt.get('Type'), evt)
                 continue
 
             cid = evt.get('id')
             if cid is None:
-                log.debug("Skipped event due missing id: [type=%s] %s", evt.get('Type'), evt)
+                log.debug("[monitor] skipped event due missing id: [type=%s] %s", evt.get('Type'), evt)
                 continue
 
             status = evt.get('status')
             if status not in ('start', 'die', 'rename'):
-                log.debug("Skipped event due wrong status: [status=%s] %s", evt.get('status'), evt)
+                log.debug("[monitor] skipped event due wrong status: [status=%s] %s", evt.get('status'), evt)
                 continue
 
-            log.info("got Docker event [type=%s] [status=%s] [cid=%s]", etype, status, cid)
+            log.info("[monitor] got Docker event [type=%s] [status=%s] [cid=%s]", etype, status, cid)
 
             # get full details on this container from docker
             record = self._docker.inspect_container(cid)
@@ -127,12 +129,12 @@ class DockerMonitor(object):
             try:
                 dnsrecords = self._inspect(record)
             except Exception as e:
-                log.error('Error: %s', e)
+                log.error('[monitor] error: %s', e)
                 dnsrecords = []
 
             for rec in dnsrecords:
                 if status == 'start':
-                    self._registry.add('name:/' + rec.name, [DNSLabel(rec.name)])
+                    self._registry.add('name:/' + rec.name, rec.names)
                     self._registry.activate(rec)
 
                 elif status == 'rename':
@@ -140,7 +142,7 @@ class DockerMonitor(object):
                     new_name = get(evt, 'Actor', 'Attributes', 'name')
                     self._registry.rename(old_name, new_name)
 
-                else:
+                elif status == 'die':
                     self._registry.deactivate(rec)
 
     def _get_names(self, name, labels):
@@ -188,9 +190,10 @@ class DockerMonitor(object):
                 match = RE_ENVVAR.match(line)
                 if match and match.groups()[0] == "VIRTUAL_HOST":
                     virtualhosts = match.groups()[1].split(",")
+                    virtualhosts = list(map(lambda x: x.strip() if x else x, virtualhosts))
                     break
         except Exception as e:
-            log.error("Error while evaluating VIRTUAL_HOST env var due to %s", e)
+            log.error("[monitor] error while evaluating VIRTUAL_HOST env var due to %s", e)
 
         labels = get(rec, 'Config', 'Labels')
 
@@ -198,9 +201,8 @@ class DockerMonitor(object):
 
         # ensure name is valid, and append our domain
         name = get(rec, 'Name')
-        if not name:
-            return None
-#        name = RE_VALIDNAME.sub('', name).rstrip('.')
+        if name:
+            name = RE_VALIDNAME.sub('', name).rstrip('.')
 
         # commented since phensley/docker-dns/commit/1ee3a2525f58881c52ed50e849ab5b7e43f56ec3
         if self._domain:
@@ -226,6 +228,9 @@ class DockerMonitor(object):
         if not ipaddress:
             ipaddress = []
 #            raise Exception("Unable to retrieve container ip address", cid)
+
+        elif ipaddress is not list:
+            ipaddress = [ipaddress]
 
         # TODO: what if we have a container connected in multiple networks?
 
