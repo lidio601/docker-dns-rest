@@ -68,16 +68,16 @@ class DockerMonitor(object):
         """
         # bootstrap by activating all running containers
         for container in containers:
-            # If a container has been started by docker-compose, it is registered
-            # under <service>.<project>.<domain>, as well as under <name>.<domain>.
-            # get full details on this container from docker
-            record = self._docker.inspect_container(container['Id'])
-
             try:
+                # If a container has been started by docker-compose, it is registered
+                # under <service>.<project>.<domain>, as well as under <name>.<domain>.
+                # get full details on this container from docker
+                record = self._docker.inspect_container(container['Id'])
+
                 dnsrecords = self._inspect(record, container)
             except Exception as e:
                 log.error('[monitor] error: %s', e)
-                dnsrecords = []
+                continue
 
             log.debug("[monitor] [%d] dnsrecords found for container %s", len(dnsrecords), record)
 
