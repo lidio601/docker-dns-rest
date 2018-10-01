@@ -124,9 +124,8 @@ class DockerMonitor(object):
             log.info("[monitor] got Docker event [type=%s] [status=%s] [cid=%s]", etype, status, cid)
 
             # get full details on this container from docker
-            record = self._docker.inspect_container(cid)
-
             try:
+                record = self._docker.inspect_container(cid)
                 dnsrecords = self._inspect(record)
             except Exception as e:
                 log.error('[monitor] error: %s', e)
